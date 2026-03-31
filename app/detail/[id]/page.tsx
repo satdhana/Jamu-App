@@ -1,10 +1,10 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { jamuData } from '@/app/data/jamuData';
 
-// ── Warna header & botol dinamis ──
+// ── Warna khas tiap jamu/ingredient ──
 const colorMap: Record<string, string> = {
   "kunyit-asam":           "#D4A843",
   "beras-kencur":          "#C8A96E",
@@ -32,9 +32,9 @@ const colorMap: Record<string, string> = {
 
 const DEFAULT_COLOR = "#C8956B";
 
-// ── Komponen Botol SVG ──
-function JamuBottle({ color, size = 80 }: { color: string; size?: number }) {
-  const clipId = `clip-${color.replace('#', '')}`;
+// ── Komponen Botol SVG — pakai uid agar clipPath tidak bentrok ──
+function JamuBottle({ color, size = 80, uid }: { color: string; size?: number; uid: string }) {
+  const clipId = `clip-${uid}`;
   return (
     <svg
       viewBox="0 0 80 180"
@@ -42,27 +42,47 @@ function JamuBottle({ color, size = 80 }: { color: string; size?: number }) {
       width={size}
       height={size * (180 / 80)}
     >
+      <defs>
+        <clipPath id={clipId}>
+          <rect x="15.5" y="48.5" width="49" height="115" rx="9" />
+        </clipPath>
+      </defs>
+
       {/* Tutup */}
       <rect x="30" y="8" width="20" height="14" rx="4" fill="#D0C8B8" stroke="#B8B0A0" strokeWidth="1" />
       <rect x="27" y="20" width="26" height="5" rx="2.5" fill="#C0B8A8" stroke="#B0A898" strokeWidth="0.8" />
+
       {/* Leher */}
       <path d="M27 25 L24 48 L56 48 L53 25 Z" fill="white" stroke="#C8C0B0" strokeWidth="1.2" />
       <path d="M30 26 L28 46" stroke="white" strokeWidth="2" strokeOpacity="0.6" strokeLinecap="round" />
-      {/* Badan */}
+
+      {/* Badan botol */}
       <rect x="14" y="47" width="52" height="118" rx="10" fill="white" stroke="#C8C0B0" strokeWidth="1.5" />
+
       {/* Cairan */}
-      <clipPath id={clipId}>
-        <rect x="15.5" y="48.5" width="49" height="115" rx="9" />
-      </clipPath>
       <g clipPath={`url(#${clipId})`}>
         <rect x="15" y="78" width="50" height="86" fill={color} fillOpacity="0.85" />
-        <path d="M15 80 Q25 74 35 79 Q45 84 55 78 Q60 75 65 79 L65 78 L15 78 Z" fill={color} fillOpacity="0.9" />
+        <path
+          d="M15 80 Q25 74 35 79 Q45 84 55 78 Q60 75 65 79 L65 78 L15 78 Z"
+          fill={color}
+          fillOpacity="0.9"
+        />
+        {/* Highlight cairan */}
         <rect x="19" y="85" width="8" height="60" rx="4" fill="white" fillOpacity="0.2" />
       </g>
-      {/* Outline atas cairan */}
+
+      {/* Outline badan (di atas cairan) */}
       <rect x="14" y="47" width="52" height="118" rx="10" fill="none" stroke="#C8C0B0" strokeWidth="1.5" />
-      {/* Highlight */}
-      <path d="M20 55 Q18 80 19 130" stroke="white" strokeWidth="3" strokeOpacity="0.5" strokeLinecap="round" fill="none" />
+
+      {/* Highlight botol */}
+      <path
+        d="M20 55 Q18 80 19 130"
+        stroke="white"
+        strokeWidth="3"
+        strokeOpacity="0.5"
+        strokeLinecap="round"
+        fill="none"
+      />
     </svg>
   );
 }
@@ -70,6 +90,7 @@ function JamuBottle({ color, size = 80 }: { color: string; size?: number }) {
 export default function DetailPage() {
   const params = useParams();
   const [showRecipe, setShowRecipe] = useState(false);
+  const baseId = useId(); // ID unik per render halaman
 
   const item = jamuData.find((j) => j.id === params.id);
   if (!item) return notFound();
@@ -95,11 +116,17 @@ export default function DetailPage() {
             paddingBottom: '5.5rem',
           }}
         >
-          <Link href="/catalogue" className="absolute top-12 left-5 z-20 text-white text-2xl active:scale-90 transition-transform">
+          <Link
+            href="/catalogue"
+            className="absolute top-12 left-5 z-20 text-white text-2xl active:scale-90 transition-transform"
+          >
             ←
           </Link>
 
-          <h1 className="text-4xl font-black text-center text-gray-900 tracking-tight px-6" style={{ letterSpacing: '-0.02em' }}>
+          <h1
+            className="text-4xl font-black text-center text-gray-900 tracking-tight px-6"
+            style={{ letterSpacing: '-0.02em' }}
+          >
             {item.name}
           </h1>
 
@@ -109,9 +136,19 @@ export default function DetailPage() {
             </p>
           )}
 
-          <div className="rounded-full overflow-hidden shadow-2xl" style={{ width: 220, height: 220, border: '5px solid rgba(255,255,255,0.35)' }}>
-            <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-          </div>
+          {/* Ingredients → foto bulat | Jamu → botol SVG */}
+          {isIngredient ? (
+            <div
+              className="rounded-full overflow-hidden shadow-2xl"
+              style={{ width: 220, height: 220, border: '5px solid rgba(255,255,255,0.35)' }}
+            >
+              <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.25))' }}>
+              <JamuBottle color={headerColor} size={110} uid={`${baseId}-header`} />
+            </div>
+          )}
         </div>
       </header>
 
@@ -125,7 +162,10 @@ export default function DetailPage() {
               <div
                 key={key}
                 className="flex items-center justify-center py-4 text-xs font-bold rounded-2xl shadow-sm capitalize text-center px-2"
-                style={{ backgroundColor: isEven ? '#A8B878' : headerColor, color: isEven ? '#3B4A2A' : '#fff' }}
+                style={{
+                  backgroundColor: isEven ? '#A8B878' : headerColor,
+                  color: isEven ? '#3B4A2A' : '#fff',
+                }}
               >
                 {key}: {val}
               </div>
@@ -143,20 +183,24 @@ export default function DetailPage() {
         </div>
 
         {/* ── DESCRIPTION BOX ── */}
-        <div className="rounded-2xl p-5 shadow-sm" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E0D0' }}>
+        <div
+          className="rounded-2xl p-5 shadow-sm"
+          style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E0D0' }}
+        >
           <p className="text-sm text-gray-600 leading-relaxed">
             {isIngredient ? item.description : (item.philosophy || item.description)}
           </p>
         </div>
 
-        {/* ── THIS CONTAINS: foto bulat (untuk Jamu) ── */}
+        {/* ── THIS CONTAINS: foto bulat per bahan (untuk Jamu) ── */}
         {!isIngredient && item.mainIngredients && item.mainIngredients.length > 0 && (
           <section>
             <h2 className="text-2xl font-black text-gray-900 mb-4">This Contains:</h2>
             <div className="grid grid-cols-4 gap-6">
               {item.mainIngredients.map((ing, idx) => {
                 const ingData = jamuData.find(
-                  (j) => j.category === "Ingredients" &&
+                  (j) =>
+                    j.category === "Ingredients" &&
                     j.name.toLowerCase().includes(ing.item.toLowerCase().split(' ')[0])
                 );
                 return (
@@ -165,14 +209,20 @@ export default function DetailPage() {
                       {ing.item}
                     </span>
                     <div className="relative w-20 h-20">
-                      <div className="w-full h-full rounded-full overflow-hidden shadow-md" style={{ backgroundColor: '#D0C8B8' }}>
+                      <div
+                        className="w-full h-full rounded-full overflow-hidden shadow-md"
+                        style={{ backgroundColor: '#D0C8B8' }}
+                      >
                         {ingData?.img
                           ? <img src={ingData.img} alt={ing.item} className="w-full h-full object-cover" />
                           : <div className="w-full h-full bg-gray-300" />
                         }
                       </div>
                       <div className="absolute inset-0 flex items-end justify-center pb-1">
-                        <span className="text-xl font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
+                        <span
+                          className="text-xl font-black text-white leading-none"
+                          style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}
+                        >
                           {ing.percentage}
                         </span>
                       </div>
@@ -193,9 +243,9 @@ export default function DetailPage() {
             </h2>
             <div className="grid grid-cols-4 gap-4">
               {item.madeJamu.map((jamuName, index) => {
-                // Cari id jamu dari nama
                 const jamuMatch = jamuData.find(
-                  (j) => j.category !== "Ingredients" &&
+                  (j) =>
+                    j.category !== "Ingredients" &&
                     j.name.toLowerCase().includes(jamuName.toLowerCase().split(' ')[0])
                 );
                 const bottleColor = jamuMatch ? (colorMap[jamuMatch.id] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
@@ -206,17 +256,16 @@ export default function DetailPage() {
                     href={jamuMatch ? `/detail/${jamuMatch.id}` : '#'}
                     className="flex flex-col items-center gap-1 group active:scale-95 transition-transform"
                   >
-                    {/* Nama jamu di atas */}
                     <span className="text-xs font-black text-gray-700 text-center leading-tight w-full line-clamp-2 mb-1">
                       {jamuName}
                     </span>
-
-                    {/* Botol SVG */}
                     <div className="group-hover:-translate-y-1 transition-transform duration-300">
-                      <JamuBottle color={bottleColor} size={52} />
+                      <JamuBottle
+                        color={bottleColor}
+                        size={52}
+                        uid={`${baseId}-made-${index}`}
+                      />
                     </div>
-
-                    {/* Nama jamu di bawah */}
                     <span
                       className="text-[9px] font-bold text-center mt-1"
                       style={{ color: bottleColor }}
@@ -310,7 +359,7 @@ export default function DetailPage() {
           </section>
         </div>
 
-        {/* ── START COURSE ── */}
+        {/* ── START COURSE (hanya untuk Jamu) ── */}
         {!isIngredient && (
           <button
             className="w-full py-5 rounded-3xl font-black uppercase tracking-widest text-xs text-white shadow-2xl active:scale-95 transition-transform"
@@ -324,10 +373,15 @@ export default function DetailPage() {
       {/* ── MODAL RECIPE ── */}
       {showRecipe && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRecipe(false)} />
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowRecipe(false)}
+          />
           <div className="relative bg-white w-full max-w-lg rounded-t-[2.5rem] p-8">
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-            <h2 className="text-2xl font-black italic mb-5 uppercase tracking-tight">Preparation Steps</h2>
+            <h2 className="text-2xl font-black italic mb-5 uppercase tracking-tight">
+              Preparation Steps
+            </h2>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
               {item.steps?.map((step, i) => (
                 <div key={i} className="flex gap-4 items-start">
@@ -341,7 +395,10 @@ export default function DetailPage() {
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowRecipe(false)} className="w-full mt-6 py-3 font-black uppercase text-xs tracking-widest text-gray-400">
+            <button
+              onClick={() => setShowRecipe(false)}
+              className="w-full mt-6 py-3 font-black uppercase text-xs tracking-widest text-gray-400"
+            >
               Close
             </button>
           </div>
