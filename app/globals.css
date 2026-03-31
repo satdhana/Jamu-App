@@ -24,3 +24,9 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer utilities {
+  .clip-swoosh {
+    clip-path: ellipse(100% 65% at 50% 35%);
+  }
+}

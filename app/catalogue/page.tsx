@@ -1,154 +1,241 @@
 "use client";
-
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { jamuData } from '@/app/data/jamuData';
 
-// Data Bahan Herbal (Baris 1)
-const row1Ingredients = [
-  { id: 1, name: 'Jahe Merah', scientific: 'Zingiber officinale', img: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=300' },
-  { id: 2, name: 'Kunyit', scientific: 'Curcuma longa', img: 'https://images.unsplash.com/photo-1615485925600-97237c4fc1ec?auto=format&fit=crop&q=80&w=300' },
-  { id: 3, name: 'Temulawak', scientific: 'Curcuma xanthorrhiza', img: 'https://images.unsplash.com/photo-1615484477778-ca3b77940c25?auto=format&fit=crop&q=80&w=300' },
-  { id: 4, name: 'Kencur', scientific: 'Kaempferia galanga', img: 'https://images.unsplash.com/photo-1627318359223-911b3334237c?auto=format&fit=crop&q=80&w=300' },
-  { id: 5, name: 'Kayu Manis', scientific: 'Cinnamomum verum', img: 'https://images.unsplash.com/photo-1599318181673-98305c6d37aa?auto=format&fit=crop&q=80&w=300' },
-  { id: 6, name: 'Sirih', scientific: 'Piper betle', img: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=300' },
-  { id: 7, name: 'Sambiloto', scientific: 'Andrographis paniculata', img: 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?auto=format&fit=crop&q=80&w=300' },
-  { id: 8, name: 'Cengkeh', scientific: 'Syzygium aromaticum', img: 'https://images.unsplash.com/photo-1608500218890-c5f01c7049d1?auto=format&fit=crop&q=80&w=300' },
-  { id: 9, name: 'Kapulaga', scientific: 'Elettaria cardamomum', img: 'https://images.unsplash.com/photo-1515543504111-8e3489e24876?auto=format&fit=crop&q=80&w=300' },
-  { id: 10, name: 'Pandan', scientific: 'Pandanus amaryllifolius', img: 'https://images.unsplash.com/photo-1591981772121-51ff7344930d?auto=format&fit=crop&q=80&w=300' },
-];
+// ── Warna cairan botol berdasarkan id jamu ──
+const bottleColorMap: Record<string, string> = {
+  "kunyit-asam":          "#D4A843",
+  "beras-kencur":         "#C8A96E",
+  "cabe-puyang":          "#C0503A",
+  "paitan":               "#4A6B3A",
+  "kunci-suruh":          "#6B8F5A",
+  "kudu-laos":            "#8B6B3D",
+  "uyup-uyup":            "#7A9E7E",
+  "sinom":                "#B8A84A",
+  "loloh-cemcem":         "#5C8A5A",
+  "loloh-piduh":          "#4A7A6A",
+  "loloh-don-kayu-manis": "#8A6B4A",
+  "jamu-maag":            "#7A8C5A",
+  "jamu-immunity":        "#C4872A",
+  "jamu-anti-toxic":      "#4A6B7A",
+};
+const DEFAULT_BOTTLE_COLOR = "#C8956B";
 
-// Data Bahan Herbal (Baris 2)
-const row2Ingredients = [
- { id: 1, name: 'Jahe Merah', scientific: 'Zingiber officinale', img: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=300' },
-  { id: 2, name: 'Kunyit', scientific: 'Curcuma longa', img: 'https://images.unsplash.com/photo-1615485925600-97237c4fc1ec?auto=format&fit=crop&q=80&w=300' },
-  { id: 3, name: 'Temulawak', scientific: 'Curcuma xanthorrhiza', img: 'https://images.unsplash.com/photo-1615484477778-ca3b77940c25?auto=format&fit=crop&q=80&w=300' },
-  { id: 4, name: 'Kencur', scientific: 'Kaempferia galanga', img: 'https://images.unsplash.com/photo-1627318359223-911b3334237c?auto=format&fit=crop&q=80&w=300' },
-  { id: 5, name: 'Kayu Manis', scientific: 'Cinnamomum verum', img: 'https://images.unsplash.com/photo-1599318181673-98305c6d37aa?auto=format&fit=crop&q=80&w=300' },
-    { id: 6, name: 'Sirih', scientific: 'Piper betle', img: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=300' },
-  { id: 7, name: 'Sambiloto', scientific: 'Andrographis paniculata', img: 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?auto=format&fit=crop&q=80&w=300' },
-  { id: 8, name: 'Cengkeh', scientific: 'Syzygium aromaticum', img: 'https://images.unsplash.com/photo-1608500218890-c5f01c7049d1?auto=format&fit=crop&q=80&w=300' },
-  { id: 9, name: 'Kapulaga', scientific: 'Elettaria cardamomum', img: 'https://images.unsplash.com/photo-1515543504111-8e3489e24876?auto=format&fit=crop&q=80&w=300' },
-  { id: 10, name: 'Pandan', scientific: 'Pandanus amaryllifolius', img: 'https://images.unsplash.com/photo-1591981772121-51ff7344930d?auto=format&fit=crop&q=80&w=300' },
+// ── Komponen Botol SVG ──
+function JamuBottle({ color = DEFAULT_BOTTLE_COLOR }: { color: string }) {
+  const liquidColor = color;
+  const liquidColorDark = color + "CC"; // sedikit transparan untuk efek
 
-];
+  return (
+    <svg
+      viewBox="0 0 80 180"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full h-full"
+    >
+      {/* ── TUTUP BOTOL ── */}
+      <rect x="30" y="8" width="20" height="14" rx="4" fill="#D0C8B8" stroke="#B8B0A0" strokeWidth="1" />
+      {/* Cincin leher tutup */}
+      <rect x="27" y="20" width="26" height="5" rx="2.5" fill="#C0B8A8" stroke="#B0A898" strokeWidth="0.8" />
 
-// Data Inventori Jamu (Baris 3)
-const inventory = [
-  { id: 101, name: 'Beras Kencur', size: '250ml', color: 'bg-stone-100' },
-  { id: 102, name: 'Kunyit Asam', size: '500ml', color: 'bg-yellow-500' },
-  { id: 103, name: 'Gula Asam', size: '250ml', color: 'bg-orange-900' },
-  { id: 104, name: 'Pahitan', size: '250ml', color: 'bg-green-900' },
-  { id: 105, name: 'Sinom', size: '500ml', color: 'bg-yellow-200' },
-  { id: 106, name: 'Cabe Puyang', size: '250ml', color: 'bg-red-700' },
-  { id: 107, name: 'Uyup-uyup', size: '500ml', color: 'bg-emerald-300' },
-  { id: 108, name: 'Kudu Laos', size: '250ml', color: 'bg-orange-400' },
-  { id: 101, name: 'Beras Kencur', size: '250ml', color: 'bg-stone-100' },
-  { id: 102, name: 'Kunyit Asam', size: '500ml', color: 'bg-yellow-500' },
-  { id: 103, name: 'Gula Asam', size: '250ml', color: 'bg-orange-900' },
-  { id: 104, name: 'Pahitan', size: '250ml', color: 'bg-green-900' },
-  { id: 105, name: 'Sinom', size: '500ml', color: 'bg-yellow-200' },
-  { id: 106, name: 'Cabe Puyang', size: '250ml', color: 'bg-red-700' },
-  { id: 107, name: 'Uyup-uyup', size: '500ml', color: 'bg-emerald-300' },
-  { id: 108, name: 'Kudu Laos', size: '250ml', color: 'bg-orange-400' },
-];
+      {/* ── LEHER BOTOL ── */}
+      <path
+        d="M27 25 L24 48 L56 48 L53 25 Z"
+        fill="white"
+        stroke="#C8C0B0"
+        strokeWidth="1.2"
+      />
+      {/* Highlight leher */}
+      <path d="M30 26 L28 46" stroke="white" strokeWidth="2" strokeOpacity="0.6" strokeLinecap="round" />
+
+      {/* ── BADAN BOTOL ── */}
+      <rect x="14" y="47" width="52" height="118" rx="10" fill="white" stroke="#C8C0B0" strokeWidth="1.5" />
+
+      {/* ── CAIRAN dalam botol ── */}
+      <clipPath id={`liquid-clip-${color.replace('#', '')}`}>
+        <rect x="15.5" y="48.5" width="49" height="115" rx="9" />
+      </clipPath>
+      <g clipPath={`url(#liquid-clip-${color.replace('#', '')})`}>
+        {/* Area cairan - isi dari bawah ~75% */}
+        <rect
+          x="15"
+          y="78"
+          width="50"
+          height="86"
+          fill={liquidColor}
+          fillOpacity="0.85"
+        />
+        {/* Gelombang permukaan cairan */}
+        <path
+          d="M15 80 Q25 74 35 79 Q45 84 55 78 Q60 75 65 79 L65 78 L15 78 Z"
+          fill={liquidColor}
+          fillOpacity="0.9"
+        />
+        {/* Highlight cairan (refleksi cahaya) */}
+        <rect x="19" y="85" width="8" height="60" rx="4" fill="white" fillOpacity="0.2" />
+      </g>
+
+      {/* ── GARIS BADAN BOTOL (outline atas cairan) ── */}
+      <rect x="14" y="47" width="52" height="118" rx="10" fill="none" stroke="#C8C0B0" strokeWidth="1.5" />
+
+      {/* ── HIGHLIGHT BOTOL (refleksi kiri) ── */}
+      <path
+        d="M20 55 Q18 80 19 130"
+        stroke="white"
+        strokeWidth="3"
+        strokeOpacity="0.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
 
 export default function CataloguePage() {
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filters = ["All", "Sweet", "Sour", "Spicy", "Bitter"];
+
+  const matchesSearch = (item: any) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(query) ||
+      item.scientific.toLowerCase().includes(query) ||
+      (item.benefits && item.benefits.some((b: string) => b.toLowerCase().includes(query)))
+    );
+  };
+
+  const filteredIngredients = jamuData.filter(item => {
+    if (item.category !== "Ingredients") return false;
+    if (searchQuery && !matchesSearch(item)) return false;
+    if (activeFilter === "All") return true;
+    const filterKey = activeFilter.toLowerCase();
+    return item.stats && (item.stats as any)[filterKey];
+  });
+
+  const filteredInventory = jamuData.filter(item => {
+    if (item.category === "Ingredients") return false;
+    if (searchQuery && !matchesSearch(item)) return false;
+    if (activeFilter === "All") return true;
+    const filterKey = activeFilter.toLowerCase();
+    return item.stats && (item.stats as any)[filterKey];
+  });
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col pb-24">
-      
-      {/* Search Bar */}
-      <header className="p-6 bg-white sticky top-0 z-20 border-b border-gray-100">
-        <div className="max-w-md mx-auto relative">
-          <input 
-            type="text" 
-            placeholder="Search Jamudex..." 
-            className="w-full h-12 pl-12 pr-4 bg-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+    <div className="min-h-screen text-gray-900 flex flex-col pb-24" style={{ backgroundColor: '#F5F0E8', fontFamily: "'Georgia', serif" }}>
+
+      {/* ── HEADER & SEARCH ── */}
+      <header className="p-6 sticky top-0 z-20" style={{ backgroundColor: '#F5F0E8' }}>
+        <div className="relative mb-4">
+          <input
+            type="text"
+            placeholder="Search Jamudex..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-12 pl-12 pr-10 rounded-2xl focus:outline-none transition text-sm"
+            style={{ backgroundColor: '#EDE8DE', border: '1px solid #D8D0C0' }}
           />
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40">🔍</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40 text-lg">🔍</span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Filter Capsule Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`px-5 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                activeFilter === filter
+                  ? 'text-white shadow-md'
+                  : 'text-gray-500'
+              }`}
+              style={{
+                backgroundColor: activeFilter === filter ? '#5A6B3A' : '#EDE8DE',
+                border: activeFilter === filter ? 'none' : '1px solid #D0C8B8',
+              }}
+            >
+              {filter}
+            </button>
+          ))}
         </div>
       </header>
 
-      <main className="flex-1 p-6 space-y-10">
-        
-        {/* SECTION: JAMU INGREDIENTS */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">Jamu Ingredients</h2>
-          
-          {/* Baris 1: Ingredients */}
-          <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
-  {row1Ingredients.map((item) => (
-    /* 1. Tambahkan Link dengan template literal untuk ID dinamis */
-    <Link 
-      href={`/detail/${item.name.toLowerCase().replace(/\s+/g, '-')}`} 
-      key={item.id}
-      className="flex-shrink-0"
-    >
-      <div className="w-40 space-y-3 cursor-pointer group">
-        {/* 2. Tambahkan efek hover agar lebih interaktif */}
-        <div className="w-40 h-40 rounded-3xl shadow-md overflow-hidden bg-gray-200 border-b-4 border-gray-300 group-hover:border-emerald-500 transition-colors">
-          <img 
-            src={item.img} 
-            alt={item.name} 
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-          />
-        </div>
-        <div className="px-1">
-          <h3 className="font-bold text-sm truncate group-hover:text-emerald-700">{item.name}</h3>
-          <p className="text-[10px] text-gray-400 italic truncate">{item.scientific}</p>
-        </div>
-      </div>
-    </Link>
-  ))}
-  
-  {/* Indikator Panah */}
-  <div className="flex-shrink-0 w-12 flex items-center justify-center text-2xl text-gray-300 select-none">
-    ▷
-  </div>
-</div>
+      <main className="flex-1 px-6 space-y-10">
 
-          {/* Baris 2: Ingredients */}
-          <div className="flex overflow-x-auto gap-4 pb-4 mt-6 scrollbar-hide">
-            {row2Ingredients.map((item) => (
-              <div key={item.id} className="flex-shrink-0 w-40 space-y-3">
-                <div className="w-40 h-40 rounded-3xl shadow-md overflow-hidden bg-gray-200 border-b-4 border-gray-300">
-                  <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="px-1">
-                  <h3 className="font-bold text-sm truncate">{item.name}</h3>
-                  <p className="text-[10px] text-gray-400 italic truncate">{item.scientific}</p>
-                </div>
-              </div>
-            ))}
-            <div className="flex-shrink-0 w-12 flex items-center justify-center text-2xl text-gray-300">▷</div>
+        {/* ── JAMU INGREDIENTS ── */}
+        <section>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-5">Jamu Ingredients</h2>
+          <div className="flex overflow-x-auto gap-5 pb-4 scrollbar-hide -mx-6 px-6">
+            {filteredIngredients.length > 0 ? (
+              filteredIngredients.map((item) => (
+                <Link href={`/detail/${item.id}`} key={item.id} className="flex-shrink-0 group">
+                  <div className="w-36 flex flex-col items-center gap-2 active:scale-95 transition-transform">
+                    <div className="w-36 h-36 rounded-full overflow-hidden shadow-md" style={{ backgroundColor: '#D8D0C0' }}>
+                      <img
+                        src={item.img}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="font-bold text-sm leading-tight">{item.name}</h3>
+                      <p className="text-[10px] text-gray-400 italic">{item.scientific}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p className="text-xs text-gray-400 italic">No ingredients found.</p>
+            )}
           </div>
         </section>
 
-        {/* SECTION: JAMU INVENTORY (Baris 3) */}
+        {/* ── JAMU INVENTORY (BOTOL SVG) ── */}
         <section>
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">Jamu Inventory</h2>
-          <div className="flex overflow-x-auto gap-8 pb-4 items-end scrollbar-hide">
-            {inventory.map((item) => (
-              <div key={item.id} className="flex-shrink-0 flex flex-col items-center group">
-                {/* Botol Polos */}
-                <div className={`w-20 h-48 rounded-t-full rounded-b-xl border-2 border-gray-800 relative overflow-hidden ${item.color} transition-transform group-active:scale-90 shadow-lg`}>
-                  <div className="absolute top-0 w-full h-4 bg-white/20 border-b border-gray-800/20"></div>
-                </div>
-                <div className="mt-4 text-center">
-                  <h4 className="text-xs font-bold w-24 truncate">{item.name}</h4>
-                  <p className="text-[10px] text-gray-400">{item.size}</p>
-                </div>
-              </div>
-            ))}
-            <div className="flex-shrink-0 w-12 flex items-center justify-center text-2xl text-gray-300 mb-16">▷</div>
-          </div>
-          {/* Rak Bawah */}
-          <div className="h-2 bg-gray-200 w-full rounded-full -mt-2"></div>
-        </section>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-5">Jamu Inventory</h2>
 
+          {/* Rak / shelf area */}
+          <div className="relative">
+            <div className="flex overflow-x-auto gap-6 pb-4 scrollbar-hide -mx-6 px-6 items-end">
+              {filteredInventory.length > 0 ? (
+                filteredInventory.map((item) => {
+                  const bottleColor = bottleColorMap[item.id] ?? DEFAULT_BOTTLE_COLOR;
+                  return (
+                    <Link href={`/detail/${item.id}`} key={item.id} className="flex-shrink-0 group">
+                      <div className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
+                        {/* Botol SVG */}
+                        <div
+                          className="w-20 h-44 group-hover:-translate-y-2 transition-transform duration-300"
+                        >
+                          <JamuBottle color={bottleColor} />
+                        </div>
+                        {/* Nama */}
+                        <h4 className="text-[10px] font-black text-center w-20 leading-tight uppercase tracking-wide text-gray-700 group-hover:text-gray-900">
+                          {item.name}
+                        </h4>
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-gray-400 italic">No jamu found.</p>
+              )}
+            </div>
+
+            {/* Garis rak */}
+            <div className="h-2 rounded-full mt-1 mx-0" style={{ backgroundColor: '#D0C8B8' }} />
+          </div>
+        </section>
       </main>
-
-    
-
     </div>
   );
 }
