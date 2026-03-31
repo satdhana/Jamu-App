@@ -32,7 +32,10 @@ const colorMap: Record<string, string> = {
 
 const DEFAULT_COLOR = "#C8956B";
 
-// ── Komponen Botol SVG — pakai uid agar clipPath tidak bentrok ──
+// ✅ File harus ada di: public/videos/TEMULAWAK.mp4
+const TUTORIAL_VIDEO = "/videos/TEMULAWAK.mp4";
+
+// ── Komponen Botol SVG ──
 function JamuBottle({ color, size = 80, uid }: { color: string; size?: number; uid: string }) {
   const clipId = `clip-${uid}`;
   return (
@@ -47,42 +50,18 @@ function JamuBottle({ color, size = 80, uid }: { color: string; size?: number; u
           <rect x="15.5" y="48.5" width="49" height="115" rx="9" />
         </clipPath>
       </defs>
-
-      {/* Tutup */}
       <rect x="30" y="8" width="20" height="14" rx="4" fill="#D0C8B8" stroke="#B8B0A0" strokeWidth="1" />
       <rect x="27" y="20" width="26" height="5" rx="2.5" fill="#C0B8A8" stroke="#B0A898" strokeWidth="0.8" />
-
-      {/* Leher */}
       <path d="M27 25 L24 48 L56 48 L53 25 Z" fill="white" stroke="#C8C0B0" strokeWidth="1.2" />
       <path d="M30 26 L28 46" stroke="white" strokeWidth="2" strokeOpacity="0.6" strokeLinecap="round" />
-
-      {/* Badan botol */}
       <rect x="14" y="47" width="52" height="118" rx="10" fill="white" stroke="#C8C0B0" strokeWidth="1.5" />
-
-      {/* Cairan */}
       <g clipPath={`url(#${clipId})`}>
         <rect x="15" y="78" width="50" height="86" fill={color} fillOpacity="0.85" />
-        <path
-          d="M15 80 Q25 74 35 79 Q45 84 55 78 Q60 75 65 79 L65 78 L15 78 Z"
-          fill={color}
-          fillOpacity="0.9"
-        />
-        {/* Highlight cairan */}
+        <path d="M15 80 Q25 74 35 79 Q45 84 55 78 Q60 75 65 79 L65 78 L15 78 Z" fill={color} fillOpacity="0.9" />
         <rect x="19" y="85" width="8" height="60" rx="4" fill="white" fillOpacity="0.2" />
       </g>
-
-      {/* Outline badan (di atas cairan) */}
       <rect x="14" y="47" width="52" height="118" rx="10" fill="none" stroke="#C8C0B0" strokeWidth="1.5" />
-
-      {/* Highlight botol */}
-      <path
-        d="M20 55 Q18 80 19 130"
-        stroke="white"
-        strokeWidth="3"
-        strokeOpacity="0.5"
-        strokeLinecap="round"
-        fill="none"
-      />
+      <path d="M20 55 Q18 80 19 130" stroke="white" strokeWidth="3" strokeOpacity="0.5" strokeLinecap="round" fill="none" />
     </svg>
   );
 }
@@ -90,7 +69,8 @@ function JamuBottle({ color, size = 80, uid }: { color: string; size?: number; u
 export default function DetailPage() {
   const params = useParams();
   const [showRecipe, setShowRecipe] = useState(false);
-  const baseId = useId(); // ID unik per render halaman
+  const [showVideo, setShowVideo] = useState(false); // ← TAMBAHAN
+  const baseId = useId();
 
   const item = jamuData.find((j) => j.id === params.id);
   if (!item) return notFound();
@@ -136,7 +116,6 @@ export default function DetailPage() {
             </p>
           )}
 
-          {/* Ingredients → foto bulat | Jamu → botol SVG */}
           {isIngredient ? (
             <div
               className="rounded-full overflow-hidden shadow-2xl"
@@ -162,10 +141,7 @@ export default function DetailPage() {
               <div
                 key={key}
                 className="flex items-center justify-center py-4 text-xs font-bold rounded-2xl shadow-sm capitalize text-center px-2"
-                style={{
-                  backgroundColor: isEven ? '#A8B878' : headerColor,
-                  color: isEven ? '#3B4A2A' : '#fff',
-                }}
+                style={{ backgroundColor: isEven ? '#A8B878' : headerColor, color: isEven ? '#3B4A2A' : '#fff' }}
               >
                 {key}: {val}
               </div>
@@ -192,15 +168,14 @@ export default function DetailPage() {
           </p>
         </div>
 
-        {/* ── THIS CONTAINS: foto bulat per bahan (untuk Jamu) ── */}
+        {/* ── THIS CONTAINS ── */}
         {!isIngredient && item.mainIngredients && item.mainIngredients.length > 0 && (
           <section>
             <h2 className="text-2xl font-black text-gray-900 mb-4">This Contains:</h2>
             <div className="grid grid-cols-4 gap-6">
               {item.mainIngredients.map((ing, idx) => {
                 const ingData = jamuData.find(
-                  (j) =>
-                    j.category === "Ingredients" &&
+                  (j) => j.category === "Ingredients" &&
                     j.name.toLowerCase().includes(ing.item.toLowerCase().split(' ')[0])
                 );
                 return (
@@ -209,20 +184,14 @@ export default function DetailPage() {
                       {ing.item}
                     </span>
                     <div className="relative w-20 h-20">
-                      <div
-                        className="w-full h-full rounded-full overflow-hidden shadow-md"
-                        style={{ backgroundColor: '#D0C8B8' }}
-                      >
+                      <div className="w-full h-full rounded-full overflow-hidden shadow-md" style={{ backgroundColor: '#D0C8B8' }}>
                         {ingData?.img
                           ? <img src={ingData.img} alt={ing.item} className="w-full h-full object-cover" />
                           : <div className="w-full h-full bg-gray-300" />
                         }
                       </div>
                       <div className="absolute inset-0 flex items-end justify-center pb-1">
-                        <span
-                          className="text-xl font-black text-white leading-none"
-                          style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}
-                        >
+                        <span className="text-xl font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
                           {ing.percentage}
                         </span>
                       </div>
@@ -235,7 +204,7 @@ export default function DetailPage() {
           </section>
         )}
 
-        {/* ── JAMU CAN BE MADE: Botol SVG (untuk Ingredients) ── */}
+        {/* ── JAMU CAN BE MADE ── */}
         {isIngredient && item.madeJamu && item.madeJamu.length > 0 && (
           <section>
             <h2 className="text-2xl font-black text-gray-900 mb-4">
@@ -244,12 +213,10 @@ export default function DetailPage() {
             <div className="grid grid-cols-4 gap-4">
               {item.madeJamu.map((jamuName, index) => {
                 const jamuMatch = jamuData.find(
-                  (j) =>
-                    j.category !== "Ingredients" &&
+                  (j) => j.category !== "Ingredients" &&
                     j.name.toLowerCase().includes(jamuName.toLowerCase().split(' ')[0])
                 );
                 const bottleColor = jamuMatch ? (colorMap[jamuMatch.id] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
-
                 return (
                   <Link
                     key={index}
@@ -260,16 +227,9 @@ export default function DetailPage() {
                       {jamuName}
                     </span>
                     <div className="group-hover:-translate-y-1 transition-transform duration-300">
-                      <JamuBottle
-                        color={bottleColor}
-                        size={52}
-                        uid={`${baseId}-made-${index}`}
-                      />
+                      <JamuBottle color={bottleColor} size={52} uid={`${baseId}-made-${index}`} />
                     </div>
-                    <span
-                      className="text-[9px] font-bold text-center mt-1"
-                      style={{ color: bottleColor }}
-                    >
+                    <span className="text-[9px] font-bold text-center mt-1" style={{ color: bottleColor }}>
                       {jamuMatch?.category ?? ''}
                     </span>
                   </Link>
@@ -286,11 +246,7 @@ export default function DetailPage() {
               <h2 className="text-base font-black text-gray-900 mb-3">Characteristics</h2>
               <div className="grid grid-cols-3 gap-1.5">
                 {Object.entries(item.stats).map(([key, val], idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl aspect-square flex flex-col items-center justify-center p-1 text-center shadow-sm"
-                    style={{ backgroundColor: '#E8E2D8' }}
-                  >
+                  <div key={idx} className="rounded-xl aspect-square flex flex-col items-center justify-center p-1 text-center shadow-sm" style={{ backgroundColor: '#E8E2D8' }}>
                     <span className="text-[8px] font-black text-gray-500 uppercase leading-tight">{key}</span>
                     <span className="text-[7px] font-bold text-gray-400 mt-0.5">{val}</span>
                   </div>
@@ -304,11 +260,7 @@ export default function DetailPage() {
               <h2 className="text-base font-black text-gray-900 mb-3">Expected Body Effects</h2>
               <div className="grid grid-cols-3 gap-1.5">
                 {item.benefits.map((benefit, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl aspect-square flex items-center justify-center p-1.5 text-center shadow-sm"
-                    style={{ backgroundColor: '#E8E2D8' }}
-                  >
+                  <div key={idx} className="rounded-xl aspect-square flex items-center justify-center p-1.5 text-center shadow-sm" style={{ backgroundColor: '#E8E2D8' }}>
                     <span className="text-[8px] font-semibold text-gray-500 leading-tight">{benefit}</span>
                   </div>
                 ))}
@@ -324,11 +276,7 @@ export default function DetailPage() {
               <h2 className="text-base font-black text-gray-900 mb-3">Equipment</h2>
               <div className="space-y-2">
                 {item.equipment.map((eq, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl p-3 text-[11px] text-gray-600 shadow-sm flex items-center gap-2"
-                    style={{ backgroundColor: '#E8E2D8' }}
-                  >
+                  <div key={idx} className="rounded-xl p-3 text-[11px] text-gray-600 shadow-sm flex items-center gap-2" style={{ backgroundColor: '#E8E2D8' }}>
                     <span style={{ color: '#A8B878' }}>◆</span>
                     {eq}
                   </div>
@@ -349,7 +297,9 @@ export default function DetailPage() {
                   See Recipe
                 </button>
               )}
+              {/* ── TAMBAHAN: onClick untuk buka video ── */}
               <button
+                onClick={() => setShowVideo(true)}
                 className="w-full py-4 rounded-2xl font-bold text-sm text-gray-700 shadow-sm active:scale-95 transition-all"
                 style={{ backgroundColor: '#E8E2D8', border: '1px solid #D4CCBE' }}
               >
@@ -359,7 +309,7 @@ export default function DetailPage() {
           </section>
         </div>
 
-        {/* ── START COURSE (hanya untuk Jamu) ── */}
+        {/* ── START COURSE ── */}
         {!isIngredient && (
           <button
             className="w-full py-5 rounded-3xl font-black uppercase tracking-widest text-xs text-white shadow-2xl active:scale-95 transition-transform"
@@ -373,15 +323,10 @@ export default function DetailPage() {
       {/* ── MODAL RECIPE ── */}
       {showRecipe && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowRecipe(false)}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRecipe(false)} />
           <div className="relative bg-white w-full max-w-lg rounded-t-[2.5rem] p-8">
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-            <h2 className="text-2xl font-black italic mb-5 uppercase tracking-tight">
-              Preparation Steps
-            </h2>
+            <h2 className="text-2xl font-black italic mb-5 uppercase tracking-tight">Preparation Steps</h2>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
               {item.steps?.map((step, i) => (
                 <div key={i} className="flex gap-4 items-start">
@@ -395,12 +340,47 @@ export default function DetailPage() {
                 </div>
               ))}
             </div>
-            <button
-              onClick={() => setShowRecipe(false)}
-              className="w-full mt-6 py-3 font-black uppercase text-xs tracking-widest text-gray-400"
-            >
+            <button onClick={() => setShowRecipe(false)} className="w-full mt-6 py-3 font-black uppercase text-xs tracking-widest text-gray-400">
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAMBAHAN: MODAL VIDEO ── */}
+      {showVideo && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          {/* Backdrop — klik untuk tutup */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowVideo(false)} />
+
+          <div className="relative w-full max-w-lg mx-auto rounded-2xl overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-5 py-4"
+              style={{ backgroundColor: headerColor }}
+            >
+              <h3 className="text-white font-black text-xs uppercase tracking-widest truncate pr-3">
+                {item.name} — Tutorial
+              </h3>
+              <button
+                onClick={() => setShowVideo(false)}
+                className="flex-shrink-0 w-7 h-7 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center text-xs transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Video player */}
+            <video
+              src={TUTORIAL_VIDEO}
+              controls
+              autoPlay
+              playsInline
+              className="w-full bg-black block"
+              style={{ maxHeight: '70vh' }}
+            >
+              Browser kamu tidak mendukung pemutaran video.
+            </video>
           </div>
         </div>
       )}
