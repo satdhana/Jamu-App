@@ -111,7 +111,7 @@ export default function DetailPage() {
           </h1>
 
           {item.scientific && (
-            <p className="text-[11px] text-gray-700/70 tracking-widest uppercase italic mt-2 mb-5 px-4 text-center">
+            <p className="text-[19px] text-gray-900 tracking-widest uppercase italic mt-2 mb-5 px-4 text-center">
               {item.scientific}
             </p>
           )}
@@ -140,7 +140,7 @@ export default function DetailPage() {
             return (
               <div
                 key={key}
-                className="flex items-center justify-center py-4 text-xs font-bold rounded-2xl shadow-sm capitalize text-center px-2"
+                className="flex items-center justify-center py-4 text-xl font-bold rounded-2xl shadow-sm capitalize text-center px-2"
                 style={{ backgroundColor: isEven ? '#A8B878' : headerColor, color: isEven ? '#3B4A2A' : '#fff' }}
               >
                 {key}: {val}
@@ -150,7 +150,7 @@ export default function DetailPage() {
           {isIngredient && item.tastes?.map((taste, idx) => (
             <div
               key={`taste-${idx}`}
-              className="flex items-center justify-center py-4 text-xs font-bold rounded-2xl shadow-sm text-center px-2"
+              className="flex items-center justify-center py-4 text-xl font-bold rounded-2xl shadow-sm text-center px-2"
               style={{ backgroundColor: headerColor, color: '#fff' }}
             >
               {taste}
@@ -163,7 +163,7 @@ export default function DetailPage() {
           className="rounded-2xl p-5 shadow-sm"
           style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E0D0' }}
         >
-          <p className="text-sm text-gray-600 leading-relaxed">
+          <p className="text-xl text-gray-600 leading-relaxed">
             {isIngredient ? item.description : (item.philosophy || item.description)}
           </p>
         </div>
@@ -180,7 +180,7 @@ export default function DetailPage() {
                 );
                 return (
                   <div key={idx} className="flex flex-col items-center gap-1.5">
-                    <span className="text-xs font-black text-gray-500 text-center leading-tight uppercase tracking-wide line-clamp-2 w-full">
+                    <span className="text-xl font-black text-gray-500 text-center leading-tight uppercase tracking-wide line-clamp-2 w-full">
                       {ing.item}
                     </span>
                     <div className="relative w-20 h-20">
@@ -191,12 +191,12 @@ export default function DetailPage() {
                         }
                       </div>
                       <div className="absolute inset-0 flex items-end justify-center pb-1">
-                        <span className="text-xl font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
+                        <span className="text-2xl font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
                           {ing.percentage}
                         </span>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-400 text-center">{ing.amount}</span>
+                    <span className="text-xl text-gray-400 text-center">{ing.amount}</span>
                   </div>
                 );
               })}
@@ -223,13 +223,13 @@ export default function DetailPage() {
                     href={jamuMatch ? `/detail/${jamuMatch.id}` : '#'}
                     className="flex flex-col items-center gap-1 group active:scale-95 transition-transform"
                   >
-                    <span className="text-xs font-black text-gray-700 text-center leading-tight w-full line-clamp-2 mb-1">
+                    <span className="text-xl font-black text-gray-700 text-center leading-tight w-full line-clamp-2 mb-1">
                       {jamuName}
                     </span>
                     <div className="group-hover:-translate-y-1 transition-transform duration-300">
                       <JamuBottle color={bottleColor} size={52} uid={`${baseId}-made-${index}`} />
                     </div>
-                    <span className="text-[9px] font-bold text-center mt-1" style={{ color: bottleColor }}>
+                    <span className="text-[17px] font-bold text-center mt-1" style={{ color: bottleColor }}>
                       {jamuMatch?.category ?? ''}
                     </span>
                   </Link>
@@ -243,12 +243,12 @@ export default function DetailPage() {
         <div className="grid grid-cols-2 gap-5">
           {item.stats && Object.keys(item.stats).length > 0 && (
             <section>
-              <h2 className="text-base font-black text-gray-900 mb-3">Characteristics</h2>
+              <h2 className="text-2xl font-black text-gray-900 mb-3">Characteristics</h2>
               <div className="grid grid-cols-3 gap-1.5">
                 {Object.entries(item.stats).map(([key, val], idx) => (
                   <div key={idx} className="rounded-xl aspect-square flex flex-col items-center justify-center p-1 text-center shadow-sm" style={{ backgroundColor: '#E8E2D8' }}>
-                    <span className="text-[8px] font-black text-gray-500 uppercase leading-tight">{key}</span>
-                    <span className="text-[7px] font-bold text-gray-400 mt-0.5">{val}</span>
+                    <span className="text-[17px] font-black text-gray-500 uppercase leading-tight">{key}</span>
+                    <span className="text-[17px] font-bold text-gray-400 mt-0.5">{val}</span>
                   </div>
                 ))}
               </div>
@@ -257,11 +257,11 @@ export default function DetailPage() {
 
           {item.benefits && item.benefits.length > 0 && (
             <section>
-              <h2 className="text-base font-black text-gray-900 mb-3">Expected Body Effects</h2>
+              <h2 className="text-2xl font-black text-gray-900 mb-3">Expected Body Effects</h2>
               <div className="grid grid-cols-3 gap-1.5">
                 {item.benefits.map((benefit, idx) => (
                   <div key={idx} className="rounded-xl aspect-square flex items-center justify-center p-1.5 text-center shadow-sm" style={{ backgroundColor: '#E8E2D8' }}>
-                    <span className="text-[8px] font-semibold text-gray-500 leading-tight">{benefit}</span>
+                    <span className="text-[17px] font-semibold text-gray-500 leading-tight">{benefit}</span>
                   </div>
                 ))}
               </div>
@@ -273,10 +273,10 @@ export default function DetailPage() {
         <div className="grid grid-cols-2 gap-4 items-start">
           {item.equipment && item.equipment.length > 0 && (
             <section>
-              <h2 className="text-base font-black text-gray-900 mb-3">Equipment</h2>
+              <h2 className="text-2xl font-black text-gray-900 mb-3">Equipment</h2>
               <div className="space-y-2">
                 {item.equipment.map((eq, idx) => (
-                  <div key={idx} className="rounded-xl p-3 text-[11px] text-gray-600 shadow-sm flex items-center gap-2" style={{ backgroundColor: '#E8E2D8' }}>
+                  <div key={idx} className="rounded-xl p-3 text-[17px] text-gray-600 shadow-sm flex items-center gap-2" style={{ backgroundColor: '#E8E2D8' }}>
                     <span style={{ color: '#A8B878' }}>◆</span>
                     {eq}
                   </div>
@@ -286,12 +286,12 @@ export default function DetailPage() {
           )}
 
           <section className={!(item.equipment && item.equipment.length > 0) ? 'col-span-2' : ''}>
-            <h2 className="text-base font-black text-gray-900 mb-3">Learn More</h2>
+            <h2 className="text-2xl font-black text-gray-900 mb-3">Learn More</h2>
             <div className="space-y-3">
               {item.steps && item.steps.length > 0 && (
                 <button
                   onClick={() => setShowRecipe(true)}
-                  className="w-full py-4 rounded-2xl font-bold text-sm text-gray-700 shadow-sm active:scale-95 transition-all"
+                  className="w-full py-4 rounded-2xl font-bold text-xl text-gray-700 shadow-sm active:scale-95 transition-all"
                   style={{ backgroundColor: '#E8E2D8', border: '1px solid #D4CCBE' }}
                 >
                   See Recipe
@@ -300,7 +300,7 @@ export default function DetailPage() {
               {/* ── TAMBAHAN: onClick untuk buka video ── */}
               <button
                 onClick={() => setShowVideo(true)}
-                className="w-full py-4 rounded-2xl font-bold text-sm text-gray-700 shadow-sm active:scale-95 transition-all"
+                className="w-full py-4 rounded-2xl font-bold text-xl text-gray-700 shadow-sm active:scale-95 transition-all"
                 style={{ backgroundColor: '#E8E2D8', border: '1px solid #D4CCBE' }}
               >
                 Watch Tutorial

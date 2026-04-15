@@ -52,157 +52,124 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
+  
   const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(true);
+  const [isLibLoaded, setIsLibLoaded] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false); // State untuk UX sukses
 
-  // Load jsQR dari CDN
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if ((window as any).jsQR) return; // sudah ada
-
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
-    script.async = true;
-    document.head.appendChild(script);
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    cancelAnimationFrame(animFrameRef.current);
   }, []);
 
-  // Mulai kamera
   useEffect(() => {
-    let active = true;
+    // 1. Load Library
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    script.async = true;
+    script.onload = () => setIsLibLoaded(true);
+    document.head.appendChild(script);
 
+    // 2. Start Camera
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }, // kamera belakang di HP
+          video: { facingMode: 'environment' }
         });
-        if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute("playsinline", "true");
           videoRef.current.play();
         }
       } catch (e) {
-        setError('Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.');
+        setError("Izin kamera ditolak. Pastikan menggunakan HTTPS.");
       }
     }
-
     startCamera();
-    return () => {
-      active = false;
-      streamRef.current?.getTracks().forEach(t => t.stop());
-      cancelAnimationFrame(animFrameRef.current);
-    };
-  }, []);
+    return () => stopCamera();
+  }, [stopCamera]);
 
-  // Scan QR tiap frame
   const tick = useCallback(() => {
+    if (isSuccess) return; // Stop scan jika sudah sukses
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || !scanning) return;
+    const jsQR = (window as any).jsQR;
 
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    if (video && video.readyState === video.HAVE_ENOUGH_DATA && canvas && jsQR) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const jsQR = (window as any).jsQR;
-
-      if (jsQR) {
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert',
-        });
-        if (code) {
-          setScanning(false);
-          streamRef.current?.getTracks().forEach(t => t.stop());
-          onResult(code.data);
+        if (code && code.data) {
+          setIsSuccess(true); // Mulai animasi sukses
+          
+          // Delay 2 detik agar user lihat centang hijau, lalu pindah halaman
+          setTimeout(() => {
+            stopCamera();
+            onResult(code.data);
+          }, 2000);
           return;
         }
       }
     }
-
     animFrameRef.current = requestAnimationFrame(tick);
-  }, [scanning, onResult]);
+  }, [onResult, stopCamera, isSuccess]);
 
   useEffect(() => {
-    animFrameRef.current = requestAnimationFrame(tick);
+    if (isLibLoaded && !isSuccess) {
+      animFrameRef.current = requestAnimationFrame(tick);
+    }
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [tick]);
+  }, [isLibLoaded, tick, isSuccess]);
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-black">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4 z-10"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)' }}>
-        <h2 className="text-white font-black text-sm uppercase tracking-widest">Scan QR Jamu</h2>
-        <button
-          onClick={onClose}
-          className="w-8 h-8 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center text-sm transition-all"
-        >
-          ✕
-        </button>
+    <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
+      {/* Video Background */}
+      <div className="absolute inset-0 z-10">
+        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        <div className="absolute inset-0 bg-black/40" />
       </div>
 
-      {/* Video kamera */}
-      {!error ? (
-        <div className="relative w-full h-full">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-          />
+      {/* Header UI */}
+      <div className="absolute top-0 w-full p-6 flex justify-between items-center z-30">
+        <h2 className="text-white text-xs font-black tracking-widest uppercase">Scanner Jamudex</h2>
+        <button onClick={() => { stopCamera(); onClose(); }} className="text-white w-10 h-10 flex items-center justify-center bg-white/20 rounded-full">✕</button>
+      </div>
 
-          {/* Overlay frame QR */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-64 h-64">
-              {/* Sudut-sudut frame */}
-              <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-white rounded-tl-lg" />
-              <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-white rounded-tr-lg" />
-              <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-white rounded-bl-lg" />
-              <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-white rounded-br-lg" />
+      {/* Frame Scanner */}
+      <div className="relative z-20 flex flex-col items-center">
+        <div className={`relative w-64 h-64 border-2 transition-all duration-500 rounded-3xl ${isSuccess ? 'border-green-400 scale-110' : 'border-white/50'}`}>
+          <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-2xl" />
+          <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-2xl" />
+          <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-2xl" />
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-2xl" />
 
-              {/* Garis scan animasi */}
-              <div
-                className="absolute left-2 right-2 h-0.5 bg-green-400"
-                style={{ animation: 'scan 2s linear infinite', top: '50%' }}
-              />
+          {!isSuccess && <div className="absolute left-4 right-4 h-1 bg-green-400 shadow-[0_0_15px_rgba(74,222,128,1)] animate-laser" />}
+          
+          {isSuccess && (
+            <div className="absolute inset-0 bg-green-400/20 flex flex-col items-center justify-center animate-pulse rounded-3xl">
+              <span className="text-5xl">✅</span>
             </div>
-          </div>
-
-          {/* Petunjuk */}
-          <div className="absolute bottom-0 left-0 right-0 pb-12 flex flex-col items-center"
-            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}>
-            <p className="text-white text-xs text-center px-8 py-4 opacity-80">
-              Arahkan kamera ke QR code yang ingin discan
-            </p>
-          </div>
+          )}
         </div>
-      ) : (
-        <div className="flex flex-col items-center gap-4 px-8 text-center">
-          <span className="text-5xl">📷</span>
-          <p className="text-white text-sm">{error}</p>
-          <button
-            onClick={onClose}
-            className="px-6 py-3 bg-white text-gray-900 rounded-full font-bold text-sm"
-          >
-            Tutup
-          </button>
-        </div>
-      )}
+        <p className="mt-8 text-white text-[10px] font-bold tracking-widest bg-black/50 px-4 py-2 rounded-full uppercase">
+          {isSuccess ? "Berhasil! Mengarahkan..." : "Arahkan ke QR Code"}
+        </p>
+      </div>
 
-      {/* Canvas tersembunyi untuk proses QR */}
       <canvas ref={canvasRef} className="hidden" />
-
-      <style>{`
-        @keyframes scan {
-          0% { top: 10%; }
-          50% { top: 90%; }
-          100% { top: 10%; }
-        }
+      <style jsx>{`
+        @keyframes laserMove { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
+        .animate-laser { animation: laserMove 2s infinite ease-in-out; }
       `}</style>
     </div>
   );
@@ -245,33 +212,36 @@ export default function CataloguePage() {
 
   // Handler hasil scan QR
   const handleQRResult = (result: string) => {
-    setShowScanner(false);
+  setShowScanner(false);
 
-    // QR bisa berisi: id langsung (mis. "kunyit"), atau URL (mis. "http://.../detail/kunyit")
-    let jamuId = result.trim();
+  // 1. Ambil teks hasil scan dan bersihkan spasi
+  let rawData = result.trim();
 
-    // Jika berisi URL, ambil segmen terakhir sebagai id
-    if (jamuId.includes('/')) {
-      jamuId = jamuId.split('/').filter(Boolean).pop() ?? jamuId;
-    }
+  // 2. Logika Bedah URL
+  // Jika isi QR adalah: https://jamudex.vercel.app/detail/kunyit-asam
+  if (rawData.includes('/')) {
+    const segments = rawData.split('/').filter(Boolean); // Membagi berdasarkan "/"
+    rawData = segments[segments.length - 1]; // Mengambil segmen terakhir: "kunyit-asam"
+  }
 
-    // Cek apakah id ada di data
-    const found = jamuData.find(j => j.id === jamuId);
-    if (found) {
-      router.push(`/detail/${found.id}`);
-    } else {
-      // Coba cari berdasarkan nama
-      const byName = jamuData.find(j =>
-        j.name.toLowerCase().replace(/\s+/g, '-') === jamuId.toLowerCase()
-      );
-      if (byName) {
-        router.push(`/detail/${byName.id}`);
-      } else {
-        setScanFeedback(`QR tidak dikenali: "${result}"`);
-        setTimeout(() => setScanFeedback(null), 3000);
-      }
-    }
-  };
+  // 3. Normalisasi ID (huruf kecil semua)
+  const finalId = rawData.toLowerCase();
+
+  // 4. Cari di jamuData
+  const found = jamuData.find(j => 
+    j.id === finalId || 
+    j.name.toLowerCase().replace(/\s+/g, '-') === finalId
+  );
+
+  if (found) {
+    // Arahkan ke halaman detail menggunakan ID yang ditemukan
+    router.push(`/detail/${found.id}`);
+  } else {
+    // Jika masih gagal (misal typo di URL), beri feedback
+    setScanFeedback(`Jamu dengan ID "${finalId}" tidak ditemukan.`);
+    setTimeout(() => setScanFeedback(null), 3000);
+  }
+};
 
   return (
     <div className="min-h-screen text-gray-900 flex flex-col pb-24" style={{ backgroundColor: '#F5F0E8', fontFamily: "'Georgia', serif" }}>
@@ -317,22 +287,28 @@ export default function CataloguePage() {
 
           {/* ── TOMBOL SCAN QR ── */}
           <button
-            onClick={() => setShowScanner(true)}
-            className="w-12 h-12 flex-shrink-0 rounded-2xl flex items-center justify-center shadow-sm transition-all active:scale-95"
-            style={{ backgroundColor: '#5A6B3A' }}
-            title="Scan QR Code"
-          >
-            {/* QR Icon */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="3" height="3" />
-              <rect x="19" y="14" width="2" height="2" />
-              <rect x="14" y="19" width="2" height="2" />
-              <rect x="18" y="18" width="3" height="3" />
-            </svg>
-          </button>
+  onClick={() => setShowScanner(true)}
+  className="w-12 h-12 flex-shrink-0 rounded-2xl flex items-center justify-center shadow-sm transition-all active:scale-95"
+  style={{ backgroundColor: '#5A6B3A' }}
+  title="Scan QR Code"
+>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Frame Pojok (Viewfinder) */}
+    <path d="M7 3H5C3.89543 3 3 3.89543 3 5V7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M17 3H19C20.1046 3 21 3.89543 21 5V7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M7 21H5C3.89543 21 3 20.1046 3 19V17" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M17 21H19C20.1046 21 21 20.1046 21 19V17" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    
+    {/* QR Dots Sederhana */}
+    <rect x="7" y="7" width="3" height="3" fill="white"/>
+    <rect x="14" y="7" width="3" height="3" fill="white"/>
+    <rect x="7" y="14" width="3" height="3" fill="white"/>
+    <rect x="14" y="14" width="3" height="3" fill="white"/>
+
+    {/* Garis Scan Laser */}
+    <line x1="2" y1="12" x2="22" y2="12" stroke="#A8D18D" strokeWidth="2" strokeLinecap="round" className="animate-pulse"/>
+  </svg>
+</button>
         </div>
 
         {/* Filter Capsule Tabs */}
@@ -370,7 +346,7 @@ export default function CataloguePage() {
                     </div>
                     <div className="text-center">
                       <h3 className="font-bold text-sm leading-tight">{item.name}</h3>
-                      <p className="text-[10px] text-gray-400 italic">{item.scientific}</p>
+                      <p className="text-[13px] text-gray-700 italic">{item.scientific}</p>
                     </div>
                   </div>
                 </Link>
@@ -395,7 +371,7 @@ export default function CataloguePage() {
                         <div className="w-20 h-44 group-hover:-translate-y-2 transition-transform duration-300">
                           <JamuBottle color={bottleColor} />
                         </div>
-                        <h4 className="text-[10px] font-black text-center w-20 leading-tight uppercase tracking-wide text-gray-700 group-hover:text-gray-900">
+                        <h4 className="text-[13px] font-black text-center w-20 leading-tight uppercase tracking-wide text-gray-700 group-hover:text-gray-900">
                           {item.name}
                         </h4>
                       </div>
