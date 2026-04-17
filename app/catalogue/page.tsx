@@ -111,33 +111,46 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
   }, [facingMode, stopCamera]); // Tambahkan facingMode sebagai dependency
 
   const tick = useCallback(() => {
-    if (isSuccess) return;
+  if (isSuccess) return;
 
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const jsQR = (window as any).jsQR;
+  const video = videoRef.current;
+  const canvas = canvasRef.current;
+  const jsQR = (window as any).jsQR;
 
-    if (video && video.readyState === video.HAVE_ENOUGH_DATA && canvas && jsQR) {
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (ctx) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+  if (video && video.readyState === video.HAVE_ENOUGH_DATA && canvas && jsQR) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (ctx) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-        if (code && code.data) {
-          setIsSuccess(true);
-          setTimeout(() => {
-            stopCamera();
-            onResult(code.data);
-          }, 2000);
-          return;
-        }
+      // --- LOGIKA PERBAIKAN DI SINI ---
+      ctx.save(); // Simpan state canvas
+      
+      if (facingMode === 'user') {
+        // Jika kamera depan, balikkan canvas secara horizontal sebelum menggambar
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.restore(); // Kembalikan ke state normal
+      // --------------------------------
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code && code.data) {
+        setIsSuccess(true);
+        setTimeout(() => {
+          stopCamera();
+          onResult(code.data);
+        }, 2000);
+        return;
       }
     }
-    animFrameRef.current = requestAnimationFrame(tick);
-  }, [onResult, stopCamera, isSuccess]);
+  }
+  animFrameRef.current = requestAnimationFrame(tick);
+}, [onResult, stopCamera, isSuccess, facingMode]); // Pastikan facingMode ada di dependency
 
   useEffect(() => {
     if (isLibLoaded && !isSuccess) {
