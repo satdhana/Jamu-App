@@ -55,7 +55,11 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
   
   const [error, setError] = useState<string | null>(null);
   const [isLibLoaded, setIsLibLoaded] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false); // State untuk UX sukses
+  const [isSuccess, setIsSuccess] = useState(false);
+  
+  // ── Tambahkan State Facing Mode ──
+  // 'environment' = kamera belakang, 'user' = kamera depan
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -65,19 +69,31 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
     cancelAnimationFrame(animFrameRef.current);
   }, []);
 
-  useEffect(() => {
-    // 1. Load Library
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
-    script.async = true;
-    script.onload = () => setIsLibLoaded(true);
-    document.head.appendChild(script);
+  // Fungsi untuk mengganti kamera
+  const toggleCamera = () => {
+    stopCamera(); // Matikan kamera lama
+    setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
+  };
 
-    // 2. Start Camera
+  useEffect(() => {
+    // 1. Load Library (Hanya sekali)
+    if (!(window as any).jsQR) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+      script.async = true;
+      script.onload = () => setIsLibLoaded(true);
+      document.head.appendChild(script);
+    } else {
+      setIsLibLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    // 2. Start Camera (Dipicu ulang setiap facingMode berubah)
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
+          video: { facingMode: facingMode }
         });
         streamRef.current = stream;
         if (videoRef.current) {
@@ -86,15 +102,16 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
           videoRef.current.play();
         }
       } catch (e) {
-        setError("Izin kamera ditolak. Pastikan menggunakan HTTPS.");
+        setError("Kamera tidak dapat diakses. Pastikan izin diberikan.");
       }
     }
+
     startCamera();
     return () => stopCamera();
-  }, [stopCamera]);
+  }, [facingMode, stopCamera]); // Tambahkan facingMode sebagai dependency
 
   const tick = useCallback(() => {
-    if (isSuccess) return; // Stop scan jika sudah sukses
+    if (isSuccess) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -110,9 +127,7 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
         const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code && code.data) {
-          setIsSuccess(true); // Mulai animasi sukses
-          
-          // Delay 2 detik agar user lihat centang hijau, lalu pindah halaman
+          setIsSuccess(true);
           setTimeout(() => {
             stopCamera();
             onResult(code.data);
@@ -133,16 +148,42 @@ function QRScanner({ onClose, onResult }: { onClose: () => void; onResult: (resu
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
-      {/* Video Background */}
       <div className="absolute inset-0 z-10">
-        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        {/* Tambahkan transform mirror jika menggunakan kamera depan agar user tidak pusing */}
+        <video 
+          ref={videoRef} 
+          className="w-full h-full object-cover" 
+          muted 
+          playsInline 
+          style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+        />
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
       {/* Header UI */}
       <div className="absolute top-0 w-full p-6 flex justify-between items-center z-30">
         <h2 className="text-white text-xs font-black tracking-widest uppercase">Scanner Jamudex</h2>
-        <button onClick={() => { stopCamera(); onClose(); }} className="text-white w-10 h-10 flex items-center justify-center bg-white/20 rounded-full">✕</button>
+        <div className="flex gap-4">
+          {/* ── Tombol Flip Camera ── */}
+          <button 
+            onClick={toggleCamera}
+            className="text-white w-10 h-10 flex items-center justify-center bg-white/20 rounded-full transition-all active:scale-90"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 4v5h-5" />
+              <path d="M4 20v-5h5" />
+              <path d="M20 9A9 9 0 0 0 5.64 5.64L11 11" />
+              <path d="M4 15a9 9 0 0 0 14.36 3.36L13 13" />
+            </svg>
+          </button>
+          
+          <button 
+            onClick={() => { stopCamera(); onClose(); }} 
+            className="text-white w-10 h-10 flex items-center justify-center bg-white/20 rounded-full"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Frame Scanner */}
