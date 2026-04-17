@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-// Perbaikan Import: Pastikan path sesuai dengan folder tempat kamu menyimpan file
-// Menggunakan @/ untuk merujuk ke folder src atau root (tergantung config)
+// Import Provider Bahasa
+import { LanguageProvider } from './context/languageContext'; 
+
+// Import Provider App
 import { AppProvider } from "@/app/context/appContext";
 import AppContent from "@/app/components/appContent";
 
@@ -17,11 +19,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Metadata untuk Branding Project
 export const metadata: Metadata = {
   title: "Jamudex Ecosystem",
   description: "Traditional Javanese Herbal Medicine Encyclopedia & Personal Tracker",
-  // Menambahkan viewport agar responsif di HP lebih mantap
   viewport: "width=device-width, initial-scale=1, maximum-scale=1",
 };
 
@@ -35,14 +35,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
-        {/* AppProvider: Menyediakan data (isLoggedIn, myCourses) ke seluruh ekosistem.
-          AppContent: Mengatur logic gatekeeper (Mode Katalog vs Mode App + Login).
+        {/* Urutan Pembungkusan (Wrapper):
+          1. LanguageProvider paling luar agar semua logic (AppProvider/AppContent) 
+             bisa ikut diterjemahkan jika perlu.
         */}
-        <AppProvider>
-          <AppContent>
-            {children}
-          </AppContent>
-        </AppProvider>
+        <LanguageProvider>
+          <AppProvider>
+            <AppContent>
+              {children}
+            </AppContent>
+          </AppProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { jamuData } from '@/app/data/jamuData';
+import { useLanguage } from '@/app/context/languageContext';
 import { translations } from '@/app/data/translations';
 
 // ── Warna cairan botol berdasarkan id jamu ──
@@ -53,15 +54,9 @@ function QRScanner({ onClose, onResult, lang }: { onClose: () => void; onResult:
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
-
   const t = translations[lang];
   
-  const [error, setError] = useState<string | null>(null);
-  const [isLibLoaded, setIsLibLoaded] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
-  // ── Tambahkan State Facing Mode ──
-  // 'environment' = kamera belakang, 'user' = kamera depan
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
   const stopCamera = useCallback(() => {
@@ -72,27 +67,21 @@ function QRScanner({ onClose, onResult, lang }: { onClose: () => void; onResult:
     cancelAnimationFrame(animFrameRef.current);
   }, []);
 
-  // Fungsi untuk mengganti kamera
   const toggleCamera = () => {
-    stopCamera(); // Matikan kamera lama
+    stopCamera();
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
   };
 
   useEffect(() => {
-    // 1. Load Library (Hanya sekali)
     if (!(window as any).jsQR) {
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
       script.async = true;
-      script.onload = () => setIsLibLoaded(true);
       document.head.appendChild(script);
-    } else {
-      setIsLibLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    // 2. Start Camera (Dipicu ulang setiap facingMode berubah)
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -101,17 +90,15 @@ function QRScanner({ onClose, onResult, lang }: { onClose: () => void; onResult:
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute("playsinline", "true");
           videoRef.current.play();
         }
       } catch (e) {
-        setError("Kamera tidak dapat diakses. Pastikan izin diberikan.");
+        console.error("Camera access denied");
       }
     }
-
     startCamera();
     return () => stopCamera();
-  }, [facingMode, stopCamera]); // Tambahkan facingMode sebagai dependency
+  }, [facingMode, stopCamera]);
 
   const tick = useCallback(() => {
   if (isSuccess) return;
@@ -120,24 +107,26 @@ function QRScanner({ onClose, onResult, lang }: { onClose: () => void; onResult:
   const canvas = canvasRef.current;
   const jsQR = (window as any).jsQR;
 
-  if (video && video.readyState === video.HAVE_ENOUGH_DATA && canvas && jsQR) {
+  // 1. Pastikan semua objek ada
+  if (!video || !canvas || !jsQR) {
+    animFrameRef.current = requestAnimationFrame(tick);
+    return;
+  }
+
+  // 2. Pastikan video sudah memiliki data yang cukup
+  if (video.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (ctx) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
-      // --- LOGIKA PERBAIKAN DI SINI ---
-      ctx.save(); // Simpan state canvas
-      
+      ctx.save();
       if (facingMode === 'user') {
-        // Jika kamera depan, balikkan canvas secara horizontal sebelum menggambar
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
       }
-      
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      ctx.restore(); // Kembalikan ke state normal
-      // --------------------------------
+      ctx.restore();
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height);
@@ -147,103 +136,50 @@ function QRScanner({ onClose, onResult, lang }: { onClose: () => void; onResult:
         setTimeout(() => {
           stopCamera();
           onResult(code.data);
-        }, 2000);
+        }, 1500);
         return;
       }
     }
   }
+  
   animFrameRef.current = requestAnimationFrame(tick);
-}, [onResult, stopCamera, isSuccess, facingMode]); // Pastikan facingMode ada di dependency
+}, [isSuccess, facingMode, onResult, stopCamera]);
 
   useEffect(() => {
-    if (isLibLoaded && !isSuccess) {
-      animFrameRef.current = requestAnimationFrame(tick);
-    }
+    animFrameRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [isLibLoaded, tick, isSuccess]);
+  }, [tick]);
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
-      {/* Video Background */}
       <div className="absolute inset-0 z-10">
         <video 
           ref={videoRef} 
-          className="w-full h-full object-cover" 
-          muted 
-          playsInline 
+          className="w-full h-full object-cover opacity-60" 
+          muted playsInline 
           style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
         />
-        {/* Overlay gelap agar UI terlihat jelas */}
-        <div className="absolute inset-0 bg-black/50" />
       </div>
-
-      {/* Header UI: Menggunakan terjemahan untuk judul */}
-      <div className="absolute top-0 w-full p-6 flex justify-between items-center z-30 bg-gradient-to-b from-black/80 to-transparent">
-        <h2 className="text-white text-xs font-black tracking-widest uppercase">
-          {t.scannerTitle}
-        </h2>
+      <div className="absolute top-0 w-full p-6 flex justify-between items-center z-30 bg-gradient-to-b from-black/80 to-transparent text-white">
+        <h2 className="text-xs font-black tracking-widest uppercase">{t.scannerTitle}</h2>
         <div className="flex gap-4">
-          {/* Tombol Flip Camera */}
-          <button 
-            onClick={toggleCamera}
-            className="text-white w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90"
-            title="Switch Camera"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 4v5h-5" />
-              <path d="M4 20v-5h5" />
-              <path d="M20 9A9 9 0 0 0 5.64 5.64L11 11" />
-              <path d="M4 15a9 9 0 0 0 14.36 3.36L13 13" />
-            </svg>
-          </button>
-          
-          {/* Tombol Close */}
-          <button 
-            onClick={() => { stopCamera(); onClose(); }} 
-            className="text-white w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-all"
-          >
-            ✕
-          </button>
+          <button onClick={toggleCamera} className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full">🔄</button>
+          <button onClick={() => { stopCamera(); onClose(); }} className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full">✕</button>
         </div>
       </div>
-
-      {/* Frame Scanner */}
       <div className="relative z-20 flex flex-col items-center">
-        <div className={`relative w-64 h-64 border-2 transition-all duration-500 rounded-[2.5rem] ${isSuccess ? 'border-green-400 scale-110 shadow-[0_0_30px_rgba(74,222,128,0.3)]' : 'border-white/30'}`}>
-          {/* Siku Frame */}
-          <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-2xl" />
-          <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-2xl" />
-          <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-2xl" />
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-2xl" />
-
-          {/* Animasi Laser: Berhenti jika sukses */}
-          {!isSuccess && (
-            <div className="absolute left-4 right-4 h-1 bg-green-400 shadow-[0_0_15px_rgba(74,222,128,1)] animate-laser opacity-70" />
-          )}
-          
-          {/* Overlay Berhasil */}
-          {isSuccess && (
-            <div className="absolute inset-0 bg-green-400/20 flex flex-col items-center justify-center animate-pulse rounded-[2.5rem]">
-              <span className="text-6xl drop-shadow-lg">✅</span>
-            </div>
-          )}
+        <div className={`relative w-64 h-64 border-2 rounded-[2.5rem] transition-all duration-500 ${isSuccess ? 'border-green-400 scale-110 shadow-[0_0_30px_rgba(74,222,128,0.3)]' : 'border-white/30'}`}>
+          {!isSuccess && <div className="absolute left-4 right-4 h-1 bg-green-400 animate-laser opacity-70 shadow-[0_0_15px_rgba(74,222,128,1)]" />}
+          {isSuccess && <div className="absolute inset-0 flex items-center justify-center text-6xl">✅</div>}
         </div>
-
-        {/* Teks Instruksi Bawah: Menggunakan terjemahan dinamis */}
-        <p className="mt-10 text-white text-[10px] font-bold tracking-[0.2em] bg-black/60 backdrop-blur-md px-6 py-2.5 rounded-full uppercase border border-white/10 transition-all">
+        <p className="mt-10 text-white text-[10px] font-bold tracking-[0.2em] bg-black/60 backdrop-blur-md px-6 py-2.5 rounded-full uppercase border border-white/10">
           {isSuccess ? t.scannerSuccess : t.scannerHint}
         </p>
       </div>
-
       <canvas ref={canvasRef} className="hidden" />
-      
       <style jsx>{`
-        @keyframes laserMove { 
-          0% { top: 15%; opacity: 0.3; } 
-          50% { top: 85%; opacity: 1; } 
-          100% { top: 15%; opacity: 0.3; } 
-        }
-        .animate-laser { animation: laserMove 2.5s infinite ease-in-out; }
+        @keyframes laserMove { 0% { top: 15%; } 50% { top: 85%; } 100% { top: 15%; } }
+        .animate-laser { animation: laserMove 2.5s infinite ease-in-out; position: absolute; }
       `}</style>
     </div>
   );
@@ -252,7 +188,7 @@ function QRScanner({ onClose, onResult, lang }: { onClose: () => void; onResult:
 // ── Halaman Utama ──
 export default function CataloguePage() {
   const router = useRouter();
-  const [lang, setLang] = useState<'en' | 'id'>('en');
+  const { lang, toggleLang } = useLanguage(); // Mengambil State Global
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [showScanner, setShowScanner] = useState(false);
@@ -261,17 +197,16 @@ export default function CataloguePage() {
   const t = translations[lang];
   const filters = ["All", "Sweet", "Sour", "Spicy", "Bitter"];
 
-  // Fungsi pembantu translasi data dinamis
   const getTranslatedName = (item: any) => {
     return (translations[lang] as any)[item.id]?.name || item.name;
   };
 
   const matchesSearch = (item: any) => {
     const query = searchQuery.toLowerCase();
+    const translatedName = getTranslatedName(item).toLowerCase();
     return (
-      item.name.toLowerCase().includes(query) ||
-      item.scientific.toLowerCase().includes(query) ||
-      (item.benefits && item.benefits.some((b: string) => b.toLowerCase().includes(query)))
+      translatedName.includes(query) ||
+      item.scientific.toLowerCase().includes(query)
     );
   };
 
@@ -279,219 +214,131 @@ export default function CataloguePage() {
     if (item.category !== "Ingredients") return false;
     if (searchQuery && !matchesSearch(item)) return false;
     if (activeFilter === "All") return true;
-    const filterKey = activeFilter.toLowerCase();
-    return item.stats && (item.stats as any)[filterKey];
+    return item.stats && (item.stats as any)[activeFilter.toLowerCase()];
   });
 
   const filteredInventory = jamuData.filter(item => {
     if (item.category === "Ingredients") return false;
     if (searchQuery && !matchesSearch(item)) return false;
     if (activeFilter === "All") return true;
-    const filterKey = activeFilter.toLowerCase();
-    return item.stats && (item.stats as any)[filterKey];
+    return item.stats && (item.stats as any)[activeFilter.toLowerCase()];
   });
 
-  // Handler hasil scan QR
   const handleQRResult = (result: string) => {
-  setShowScanner(false);
-
-  // 1. Ambil teks hasil scan dan bersihkan spasi
-  let rawData = result.trim();
-
-  // 2. Logika Bedah URL
-  // Jika isi QR adalah: https://jamudex.vercel.app/detail/kunyit-asam
-  if (rawData.includes('/')) {
-    const segments = rawData.split('/').filter(Boolean); // Membagi berdasarkan "/"
-    rawData = segments[segments.length - 1]; // Mengambil segmen terakhir: "kunyit-asam"
-  }
-
-  // 3. Normalisasi ID (huruf kecil semua)
-  const finalId = rawData.toLowerCase();
-
-  // 4. Cari di jamuData
-  const found = jamuData.find(j => 
-    j.id === finalId || 
-    j.name.toLowerCase().replace(/\s+/g, '-') === finalId
-  );
-
-  if (found) {
-    // Arahkan ke halaman detail menggunakan ID yang ditemukan
-    router.push(`/detail/${found.id}`);
-  } else {
-    // Jika masih gagal (misal typo di URL), beri feedback
-    setScanFeedback(`Jamu dengan ID "${finalId}" tidak ditemukan.`);
-    setTimeout(() => setScanFeedback(null), 3000);
-  }
-};
+    setShowScanner(false);
+    let rawId = result.trim().split('/').filter(Boolean).pop()?.toLowerCase() || "";
+    const found = jamuData.find(j => j.id === rawId || j.name.toLowerCase().replace(/\s+/g, '-') === rawId);
+    if (found) {
+      router.push(`/detail/${found.id}`);
+    } else {
+      setScanFeedback(lang === 'en' ? `ID "${rawId}" not found.` : `ID "${rawId}" tidak ditemukan.`);
+      setTimeout(() => setScanFeedback(null), 3000);
+    }
+  };
 
   return (
-  <div className="min-h-screen text-gray-900 flex flex-col pb-24" style={{ backgroundColor: '#F5F0E8', fontFamily: "'Georgia', serif" }}>
+    <div className="min-h-screen text-gray-900 flex flex-col pb-24" style={{ backgroundColor: '#F5F0E8', fontFamily: "'Georgia', serif" }}>
+      
+      {showScanner && <QRScanner lang={lang} onClose={() => setShowScanner(false)} onResult={handleQRResult} />}
 
-    {/* ── QR SCANNER OVERLAY ── */}
-    {showScanner && (
-      <QRScanner
-        lang={lang}
-        onClose={() => setShowScanner(false)}
-        onResult={handleQRResult}
-      />
-    )}
+      {/* Floating Toggle Bahasa */}
+      <button 
+        onClick={toggleLang}
+        className="fixed bottom-28 right-6 z-[50] w-14 h-14 bg-white shadow-2xl rounded-full border-2 border-[#5A6B3A] flex items-center justify-center font-black text-sm text-[#5A6B3A] active:scale-90 transition-all"
+      >
+        {lang === 'en' ? 'ID' : 'EN'}
+      </button>
 
-    {/* ── TOMBOL TOGGLE BAHASA (FLOATING) ── */}
-    <button 
-      onClick={() => setLang(lang === 'en' ? 'id' : 'en')}
-      className="fixed bottom-28 right-6 z-[50] w-14 h-14 bg-white shadow-2xl rounded-full border-2 border-[#5A6B3A] flex items-center justify-center font-black text-sm text-[#5A6B3A] active:scale-90 transition-all hover:bg-[#5A6B3A] hover:text-white"
-    >
-      {lang === 'en' ? 'ID' : 'EN'}
-    </button>
+      {scanFeedback && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[90] bg-red-500 text-white text-xs font-bold px-6 py-3 rounded-full shadow-lg">
+          {scanFeedback}
+        </div>
+      )}
 
-    {/* ── FEEDBACK SCAN ── */}
-    {scanFeedback && (
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[90] bg-red-500 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-lg animate-bounce">
-        {scanFeedback}
-      </div>
-    )}
-
-    {/* ── HEADER & SEARCH ── */}
-    <header className="sticky top-0 z-20 w-full" style={{ backgroundColor: '#F5F0E8' }}>
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="relative mb-4 flex gap-3">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder={t.searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 pl-12 pr-10 rounded-2xl focus:outline-none transition text-sm shadow-sm"
-              style={{ backgroundColor: '#EDE8DE', border: '1px solid #D8D0C0' }}
-            />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40 text-lg">🔍</span>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            )}
+      {/* Header & Search */}
+      <header className="sticky top-0 z-20 w-full" style={{ backgroundColor: '#F5F0E8' }}>
+        <div className="max-w-5xl mx-auto p-6">
+          <div className="relative mb-6 flex gap-3">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder={t.searchPlaceholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-12 pl-12 pr-10 rounded-2xl focus:outline-none transition text-sm bg-[#EDE8DE] border border-[#D8D0C0]"
+              />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40">🔍</span>
+            </div>
+            <button onClick={() => setShowScanner(true)} className="w-12 h-12 flex-shrink-0 rounded-2xl flex items-center justify-center bg-[#5A6B3A] shadow-lg active:scale-95 transition-all">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 7h10v10H7z"/></svg>
+            </button>
           </div>
 
-          {/* Tombol Scan QR */}
-          <button
-            onClick={() => setShowScanner(true)}
-            className="w-12 h-12 flex-shrink-0 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-95 hover:opacity-90"
-            style={{ backgroundColor: '#5A6B3A' }}
-            title={t.scannerTitle}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 3H5C3.89543 3 3 3.89543 3 5V7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M17 3H19C20.1046 3 21 3.89543 21 5V7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M7 21H5C3.89543 21 3 20.1046 3 19V17" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M17 21H19C20.1046 21 21 20.1046 21 19V17" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <rect x="7" y="7" width="3" height="3" fill="white"/>
-              <rect x="14" y="7" width="3" height="3" fill="white"/>
-              <rect x="7" y="14" width="3" height="3" fill="white"/>
-              <rect x="14" y="14" width="3" height="3" fill="white"/>
-              <line x1="2" y1="12" x2="22" y2="12" stroke="#A8D18D" strokeWidth="2" strokeLinecap="round" className="animate-pulse"/>
-            </svg>
-          </button>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {filters.map((f) => (
+              <button key={f} onClick={() => setActiveFilter(f)}
+                className={`px-6 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${activeFilter === f ? 'bg-[#5A6B3A] text-white shadow-md' : 'text-gray-500 bg-[#EDE8DE] border border-[#D0C8B8]'}`}>
+                {(t as any)[`filter${f}`] || f}
+              </button>
+            ))}
+          </div>
         </div>
+      </header>
 
-        {/* Filter Capsule Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`px-6 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                activeFilter === filter ? 'text-white shadow-md' : 'text-gray-500'
-              }`}
-              style={{
-                backgroundColor: activeFilter === filter ? '#5A6B3A' : '#EDE8DE',
-                border: activeFilter === filter ? 'none' : '1px solid #D0C8B8',
-              }}
-            >
-              {(t as any)[`filter${filter}`] || filter}
-            </button>
-          ))}
-        </div>
-      </div>
-    </header>
-
-    {/* ── MAIN CONTENT ── */}
-    <main className="flex-1 max-w-5xl mx-auto w-full px-6 space-y-12 mt-4">
-
-      {/* ── JAMU INGREDIENTS ── */}
-      <section>
-        <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-6">
-          {t.ingredientsTitle}
-        </h2>
-        <div className="flex overflow-x-auto gap-6 pb-6 no-scrollbar -mx-6 px-6">
-          {filteredIngredients.length > 0 ? (
-            filteredIngredients.map((item) => (
-              <Link href={`/detail/${item.id}`} key={item.id} className="flex-shrink-0 group w-36 md:w-44">
-                <div className="flex flex-col items-center gap-3 active:scale-95 transition-transform">
-                  <div className="aspect-square w-full rounded-full overflow-hidden shadow-lg border-4 border-white bg-[#D8D0C0]">
-                    <img 
-                      src={item.img} 
-                      alt={getTranslatedName(item)} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                    />
+      {/* Main Content */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 space-y-12">
+        
+        {/* Jamu Ingredients */}
+        <section>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-6">{t.ingredientsTitle}</h2>
+          <div className="flex overflow-x-auto gap-6 pb-6 no-scrollbar -mx-6 px-6">
+            {filteredIngredients.length > 0 ? (
+              filteredIngredients.map((item) => (
+                <Link href={`/detail/${item.id}`} key={item.id} className="flex-shrink-0 group w-36 md:w-44">
+                  <div className="flex flex-col items-center gap-3 transition-transform active:scale-95">
+                    <div className="aspect-square w-full rounded-full overflow-hidden shadow-lg border-4 border-white bg-[#D8D0C0]">
+                      <img src={item.img} alt={getTranslatedName(item)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="font-bold text-sm md:text-base leading-tight">{getTranslatedName(item)}</h3>
+                      <p className="text-[11px] md:text-xs text-gray-400 italic mt-1 uppercase tracking-tighter">{item.scientific}</p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <h3 className="font-bold text-sm md:text-base leading-tight">
-                      {getTranslatedName(item)}
-                    </h3>
-                    <p className="text-[11px] md:text-xs text-gray-500 italic mt-1">
-                      {item.scientific}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <p className="text-sm text-gray-400 italic px-2">{t.noIngredients}</p>
-          )}
-        </div>
-      </section>
+                </Link>
+              ))
+            ) : <p className="text-sm text-gray-400 italic px-2">{t.noIngredients}</p>}
+          </div>
+        </section>
 
-      {/* ── JAMU INVENTORY ── */}
-      <section>
-        <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-6">
-          {t.inventoryTitle}
-        </h2>
-        <div className="relative">
-          <div className="flex overflow-x-auto gap-8 pb-6 items-end no-scrollbar -mx-6 px-6">
-            {filteredInventory.length > 0 ? (
-              filteredInventory.map((item) => {
-                const bottleColor = bottleColorMap[item.id] ?? DEFAULT_BOTTLE_COLOR;
-                return (
+        {/* Jamu Inventory */}
+        <section>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-6">{t.inventoryTitle}</h2>
+          <div className="relative">
+            <div className="flex overflow-x-auto gap-8 pb-10 no-scrollbar -mx-6 px-6 items-start">
+              {filteredInventory.length > 0 ? (
+                filteredInventory.map((item) => (
                   <Link href={`/detail/${item.id}`} key={item.id} className="flex-shrink-0 group">
-                    <div className="flex flex-col items-center gap-3 active:scale-95 transition-transform">
-                      <div className="w-20 h-44 md:w-24 md:h-52 drop-shadow-xl group-hover:-translate-y-3 transition-transform duration-300">
-                        <JamuBottle color={bottleColor} />
+                    <div className="w-24 md:w-28 flex flex-col items-center active:scale-95 transition-transform">
+                      <div className="w-20 h-44 md:w-24 md:h-52 group-hover:-translate-y-3 transition-transform duration-300 flex-shrink-0 drop-shadow-xl">
+                        <JamuBottle color={bottleColorMap[item.id] || DEFAULT_BOTTLE_COLOR} />
                       </div>
-                      <h4 className="text-[11px] md:text-sm font-black text-center w-24 leading-tight uppercase tracking-wider text-gray-600 group-hover:text-gray-900">
+                      <h4 className="text-[11px] md:text-sm font-black text-center uppercase tracking-wider text-gray-600 group-hover:text-gray-900 mt-4 leading-tight min-h-[40px] flex items-start justify-center">
                         {getTranslatedName(item)}
                       </h4>
                     </div>
                   </Link>
-                );
-              })
-            ) : (
-              <p className="text-sm text-gray-400 italic px-2">{t.noJamu}</p>
-            )}
+                ))
+              ) : <p className="text-sm text-gray-400 italic px-2">{t.noJamu}</p>}
+            </div>
+            <div className="h-2 w-full rounded-full mt-2 shadow-inner" style={{ backgroundColor: '#D0C8B8' }} />
           </div>
-          {/* Lantai / Rak Botol */}
-          <div className="h-2 w-full rounded-full mt-2 shadow-inner" style={{ backgroundColor: '#D0C8B8' }} />
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
 
-    <style jsx global>{`
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    `}</style>
-  </div>
-);
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
 }
