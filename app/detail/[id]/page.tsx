@@ -85,240 +85,224 @@ export default function DetailPage() {
     >
 
       {/* ── HEADER ── */}
-      <header className="relative w-full flex flex-col items-center">
+      {/* ── HEADER ── */}
+<header className="relative w-full flex flex-col items-center">
+  <div
+    className="relative w-full flex flex-col items-center transition-all duration-500"
+    style={{
+      backgroundColor: headerColor,
+      // Menggunakan radius yang lebih halus untuk layar lebar agar tidak terlalu "curvy"
+      borderBottomLeftRadius: '50% 20%', 
+      borderBottomRightRadius: '50% 20%',
+      // Padding dinamis menggunakan clamp (Min, Preferred, Max)
+      paddingTop: 'clamp(3rem, 10vw, 5rem)',
+      paddingBottom: 'clamp(4rem, 12vw, 7rem)',
+    }}
+  >
+    {/* Tombol Back: Ukuran lebih besar di tablet/laptop */}
+    <Link
+      href="/catalogue"
+      className="absolute top-8 left-5 md:top-12 md:left-10 z-20 text-white text-2xl md:text-4xl active:scale-90 transition-transform"
+    >
+      ←
+    </Link>
+
+    {/* Nama Jamu: Responsif dari text-3xl hingga 6xl */}
+    <h1
+      className="text-3xl md:text-5xl lg:text-6xl font-black text-center text-gray-900 tracking-tight px-6 max-w-4xl"
+      style={{ letterSpacing: '-0.02em', lineHeight: '1.1' }}
+    >
+      {item.name}
+    </h1>
+
+    {/* Nama Ilmiah: Responsif dari text-sm hingga text-xl */}
+    {item.scientific && (
+      <p className="text-sm md:text-lg lg:text-xl text-gray-900/80 tracking-widest uppercase italic mt-2 mb-6 px-4 text-center">
+        {item.scientific}
+      </p>
+    )}
+
+    {/* Visual: Gambar atau Botol */}
+    {isIngredient ? (
+      <div
+        className="rounded-full overflow-hidden shadow-2xl border-[4px] md:border-[6px] border-white/30 
+                   w-48 h-48 md:w-64 md:h-64 lg:w-80 lg:h-80 transition-all duration-500"
+      >
+        <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+      </div>
+    ) : (
+      <div 
+        className="transition-transform duration-500 scale-90 md:scale-110 lg:scale-125"
+        style={{ filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.2))' }}
+      >
+        <JamuBottle color={headerColor} size={110} uid={`${baseId}-header`} />
+      </div>
+    )}
+  </div>
+</header>
+
+      <main className="flex-1 max-w-5xl mx-auto w-full px-5 md:px-10 mt-6 space-y-10">
+
+  {/* ── STATS PILLS: Responsif 2 kolom di HP, 4 di Laptop ── */}
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+    {item.stats && Object.entries(item.stats).map(([key, val], idx) => {
+      const isEven = idx % 2 === 0;
+      return (
         <div
-          className="relative w-full flex flex-col items-center"
-          style={{
-            backgroundColor: headerColor,
-            borderBottomLeftRadius: '50% 40%',
-            borderBottomRightRadius: '50% 40%',
-            paddingTop: '3.5rem',
-            paddingBottom: '5.5rem',
+          key={key}
+          className="flex flex-col items-center justify-center py-4 md:py-6 rounded-3xl shadow-sm capitalize text-center px-4 transition-all hover:translate-y-[-4px]"
+          style={{ 
+            backgroundColor: isEven ? '#A8B878' : headerColor, 
+            color: isEven ? '#3B4A2A' : '#fff' 
           }}
         >
-          <Link
-            href="/catalogue"
-            className="absolute top-12 left-5 z-20 text-white text-2xl active:scale-90 transition-transform"
-          >
-            ←
-          </Link>
-
-          <h1
-            className="text-4xl font-black text-center text-gray-900 tracking-tight px-6"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            {item.name}
-          </h1>
-
-          {item.scientific && (
-            <p className="text-[19px] text-gray-900 tracking-widest uppercase italic mt-2 mb-5 px-4 text-center">
-              {item.scientific}
-            </p>
-          )}
-
-          {isIngredient ? (
-            <div
-              className="rounded-full overflow-hidden shadow-2xl"
-              style={{ width: 220, height: 220, border: '5px solid rgba(255,255,255,0.35)' }}
-            >
-              <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.25))' }}>
-              <JamuBottle color={headerColor} size={110} uid={`${baseId}-header`} />
-            </div>
-          )}
+          <span className="text-[10px] md:text-xs uppercase opacity-80 mb-1 tracking-widest">{key}</span>
+          <span className="text-lg md:text-2xl font-black">{val}</span>
         </div>
-      </header>
+      );
+    })}
+    {isIngredient && item.tastes?.map((taste, idx) => (
+      <div
+        key={`taste-${idx}`}
+        className="flex items-center justify-center py-4 md:py-6 text-lg md:text-2xl font-black rounded-3xl shadow-sm text-center px-4"
+        style={{ backgroundColor: headerColor, color: '#fff' }}
+      >
+        {taste}
+      </div>
+    ))}
+  </div>
 
-      <main className="flex-1 px-5 mt-6 space-y-8">
+  {/* ── DESCRIPTION BOX: Teks lebih mengalir & proporsional ── */}
+  <div className="rounded-3xl p-6 md:p-10 shadow-sm bg-white border border-[#E8E0D0]">
+    <p className="text-base md:text-xl lg:text-2xl text-gray-600 leading-relaxed md:leading-loose text-center md:text-left">
+      {isIngredient ? item.description : (item.philosophy || item.description)}
+    </p>
+  </div>
 
-        {/* ── STATS PILLS ── */}
-        <div className="grid grid-cols-4 gap-3 w-full">
-          {item.stats && Object.entries(item.stats).map(([key, val], idx) => {
-            const isEven = idx % 2 === 0;
-            return (
-              <div
-                key={key}
-                className="flex items-center justify-center py-4 text-xl font-bold rounded-2xl shadow-sm capitalize text-center px-2"
-                style={{ backgroundColor: isEven ? '#A8B878' : headerColor, color: isEven ? '#3B4A2A' : '#fff' }}
-              >
-                {key}: {val}
+  {/* ── THIS CONTAINS: Grid Adaptif ── */}
+  {!isIngredient && item.mainIngredients && item.mainIngredients.length > 0 && (
+    <section>
+      <h2 className="text-xl md:text-3xl font-black text-gray-900 mb-6">This Contains:</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8 md:gap-12">
+        {item.mainIngredients.map((ing, idx) => {
+          const ingData = jamuData.find(
+            (j) => j.category === "Ingredients" &&
+              j.name.toLowerCase().includes(ing.item.toLowerCase().split(' ')[0])
+          );
+          return (
+            <div key={idx} className="flex flex-col items-center gap-3 group">
+              <span className="text-xs md:text-sm font-black text-gray-400 text-center leading-tight uppercase tracking-widest line-clamp-2 h-10">
+                {ing.item}
+              </span>
+              <div className="relative w-24 h-24 md:w-32 md:h-32">
+                <div className="w-full h-full rounded-full overflow-hidden shadow-lg border-4 border-white transition-transform group-hover:scale-110">
+                  {ingData?.img
+                    ? <img src={ingData.img} alt={ing.item} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full bg-gray-200" />
+                  }
+                </div>
+                <div className="absolute inset-0 flex items-end justify-center pb-2">
+                  <span className="text-lg md:text-2xl font-black text-white drop-shadow-lg" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                    {ing.percentage}
+                  </span>
+                </div>
               </div>
-            );
-          })}
-          {isIngredient && item.tastes?.map((taste, idx) => (
-            <div
-              key={`taste-${idx}`}
-              className="flex items-center justify-center py-4 text-xl font-bold rounded-2xl shadow-sm text-center px-2"
-              style={{ backgroundColor: headerColor, color: '#fff' }}
-            >
-              {taste}
+              <span className="text-xs md:text-base text-gray-400 font-bold">{ing.amount}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  {/* ── JAMU CAN BE MADE: Khusus Ingredient ── */}
+  {isIngredient && item.madeJamu && item.madeJamu.length > 0 && (
+    <section>
+      <h2 className="text-xl md:text-3xl font-black text-gray-900 mb-6">Jamu can be made with this:</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+        {item.madeJamu.map((jamuName, index) => {
+          const jamuMatch = jamuData.find((j) => j.category !== "Ingredients" && j.name.toLowerCase().includes(jamuName.toLowerCase().split(' ')[0]));
+          const bottleColor = jamuMatch ? (colorMap[jamuMatch.id] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
+          return (
+            <Link key={index} href={jamuMatch ? `/detail/${jamuMatch.id}` : '#'} className="flex flex-col items-center gap-2 group transition-transform active:scale-95">
+              <span className="text-xs md:text-sm font-black text-gray-700 text-center leading-tight uppercase tracking-widest line-clamp-2 h-10 mb-2">{jamuName}</span>
+              <div className="group-hover:translate-y-[-8px] transition-transform duration-300">
+                <JamuBottle color={bottleColor} size={60} uid={`${baseId}-made-${index}`} />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  {/* ── CHARACTERISTICS & EFFECTS: Stack di HP, Berdampingan di Laptop ── */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
+    {item.stats && (
+      <section>
+        <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-5">Characteristics</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {Object.entries(item.stats).map(([key, val], idx) => (
+            <div key={idx} className="rounded-2xl aspect-square flex flex-col items-center justify-center p-3 text-center bg-[#E8E2D8] shadow-sm hover:shadow-md transition-shadow">
+              <span className="text-[10px] md:text-xs font-black text-gray-500 uppercase tracking-tighter">{key}</span>
+              <span className="text-xs md:text-sm font-bold text-gray-400 mt-1">{val}</span>
             </div>
           ))}
         </div>
+      </section>
+    )}
 
-        {/* ── DESCRIPTION BOX ── */}
-        <div
-          className="rounded-2xl p-5 shadow-sm"
-          style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E0D0' }}
-        >
-          <p className="text-xl text-gray-600 leading-relaxed">
-            {isIngredient ? item.description : (item.philosophy || item.description)}
-          </p>
-        </div>
-
-        {/* ── THIS CONTAINS ── */}
-        {!isIngredient && item.mainIngredients && item.mainIngredients.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-black text-gray-900 mb-4">This Contains:</h2>
-            <div className="grid grid-cols-4 gap-6">
-              {item.mainIngredients.map((ing, idx) => {
-                const ingData = jamuData.find(
-                  (j) => j.category === "Ingredients" &&
-                    j.name.toLowerCase().includes(ing.item.toLowerCase().split(' ')[0])
-                );
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-1.5">
-                    <span className="text-xl font-black text-gray-500 text-center leading-tight uppercase tracking-wide line-clamp-2 w-full">
-                      {ing.item}
-                    </span>
-                    <div className="relative w-20 h-20">
-                      <div className="w-full h-full rounded-full overflow-hidden shadow-md" style={{ backgroundColor: '#D0C8B8' }}>
-                        {ingData?.img
-                          ? <img src={ingData.img} alt={ing.item} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full bg-gray-300" />
-                        }
-                      </div>
-                      <div className="absolute inset-0 flex items-end justify-center pb-1">
-                        <span className="text-2xl font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}>
-                          {ing.percentage}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="text-xl text-gray-400 text-center">{ing.amount}</span>
-                  </div>
-                );
-              })}
+    {item.benefits && (
+      <section>
+        <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-5">Body Effects</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {item.benefits.map((benefit, idx) => (
+            <div key={idx} className="rounded-2xl aspect-square flex items-center justify-center p-3 text-center bg-[#E8E2D8] shadow-sm hover:shadow-md transition-shadow">
+              <span className="text-[10px] md:text-xs font-semibold text-gray-600 leading-tight">{benefit}</span>
             </div>
-          </section>
-        )}
-
-        {/* ── JAMU CAN BE MADE ── */}
-        {isIngredient && item.madeJamu && item.madeJamu.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-black text-gray-900 mb-4">
-              Jamu can be made with this Ingredient:
-            </h2>
-            <div className="grid grid-cols-4 gap-4">
-              {item.madeJamu.map((jamuName, index) => {
-                const jamuMatch = jamuData.find(
-                  (j) => j.category !== "Ingredients" &&
-                    j.name.toLowerCase().includes(jamuName.toLowerCase().split(' ')[0])
-                );
-                const bottleColor = jamuMatch ? (colorMap[jamuMatch.id] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
-                return (
-                  <Link
-                    key={index}
-                    href={jamuMatch ? `/detail/${jamuMatch.id}` : '#'}
-                    className="flex flex-col items-center gap-1 group active:scale-95 transition-transform"
-                  >
-                    <span className="text-xl font-black text-gray-700 text-center leading-tight w-full line-clamp-2 mb-1">
-                      {jamuName}
-                    </span>
-                    <div className="group-hover:-translate-y-1 transition-transform duration-300">
-                      <JamuBottle color={bottleColor} size={52} uid={`${baseId}-made-${index}`} />
-                    </div>
-                    <span className="text-[17px] font-bold text-center mt-1" style={{ color: bottleColor }}>
-                      {jamuMatch?.category ?? ''}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* ── CHARACTERISTICS & EXPECTED BODY EFFECTS ── */}
-        <div className="grid grid-cols-2 gap-5">
-          {item.stats && Object.keys(item.stats).length > 0 && (
-            <section>
-              <h2 className="text-2xl font-black text-gray-900 mb-3">Characteristics</h2>
-              <div className="grid grid-cols-3 gap-1.5">
-                {Object.entries(item.stats).map(([key, val], idx) => (
-                  <div key={idx} className="rounded-xl aspect-square flex flex-col items-center justify-center p-1 text-center shadow-sm" style={{ backgroundColor: '#E8E2D8' }}>
-                    <span className="text-[17px] font-black text-gray-500 uppercase leading-tight">{key}</span>
-                    <span className="text-[17px] font-bold text-gray-400 mt-0.5">{val}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {item.benefits && item.benefits.length > 0 && (
-            <section>
-              <h2 className="text-2xl font-black text-gray-900 mb-3">Expected Body Effects</h2>
-              <div className="grid grid-cols-3 gap-1.5">
-                {item.benefits.map((benefit, idx) => (
-                  <div key={idx} className="rounded-xl aspect-square flex items-center justify-center p-1.5 text-center shadow-sm" style={{ backgroundColor: '#E8E2D8' }}>
-                    <span className="text-[17px] font-semibold text-gray-500 leading-tight">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          ))}
         </div>
+      </section>
+    )}
+  </div>
 
-        {/* ── EQUIPMENT & LEARN MORE ── */}
-        <div className="grid grid-cols-2 gap-4 items-start">
-          {item.equipment && item.equipment.length > 0 && (
-            <section>
-              <h2 className="text-2xl font-black text-gray-900 mb-3">Equipment</h2>
-              <div className="space-y-2">
-                {item.equipment.map((eq, idx) => (
-                  <div key={idx} className="rounded-xl p-3 text-[17px] text-gray-600 shadow-sm flex items-center gap-2" style={{ backgroundColor: '#E8E2D8' }}>
-                    <span style={{ color: '#A8B878' }}>◆</span>
-                    {eq}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className={!(item.equipment && item.equipment.length > 0) ? 'col-span-2' : ''}>
-            <h2 className="text-2xl font-black text-gray-900 mb-3">Learn More</h2>
-            <div className="space-y-3">
-              {item.steps && item.steps.length > 0 && (
-                <button
-                  onClick={() => setShowRecipe(true)}
-                  className="w-full py-4 rounded-2xl font-bold text-xl text-gray-700 shadow-sm active:scale-95 transition-all"
-                  style={{ backgroundColor: '#E8E2D8', border: '1px solid #D4CCBE' }}
-                >
-                  See Recipe
-                </button>
-              )}
-              {/* ── TAMBAHAN: onClick untuk buka video ── */}
-              <button
-                onClick={() => setShowVideo(true)}
-                className="w-full py-4 rounded-2xl font-bold text-xl text-gray-700 shadow-sm active:scale-95 transition-all"
-                style={{ backgroundColor: '#E8E2D8', border: '1px solid #D4CCBE' }}
-              >
-                Watch Tutorial
-              </button>
+  {/* ── EQUIPMENT & LEARN MORE ── */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+    {item.equipment && item.equipment.length > 0 && (
+      <section>
+        <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-5">Equipment Needed</h2>
+        <div className="grid grid-cols-1 gap-3">
+          {item.equipment.map((eq, idx) => (
+            <div key={idx} className="rounded-2xl p-4 md:p-5 text-sm md:text-lg text-gray-600 bg-[#E8E2D8] flex items-center gap-4 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-[#A8B878]" /> {eq}
             </div>
-          </section>
+          ))}
         </div>
+      </section>
+    )}
 
-        {/* ── START COURSE ── */}
-        {!isIngredient && (
-          <button
-            className="w-full py-5 rounded-3xl font-black uppercase tracking-widest text-xs text-white shadow-2xl active:scale-95 transition-transform"
-            style={{ backgroundColor: '#2A1B17' }}
-          >
-            Start This Course
-          </button>
-        )}
-      </main>
+    <section className="space-y-5">
+      <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-5">Learn More</h2>
+      <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row gap-4">
+        <button onClick={() => setShowRecipe(true)} className="flex-1 py-4 md:py-6 rounded-2xl font-bold text-sm md:text-xl bg-[#E8E2D8] border border-[#D4CCBE] text-gray-700 hover:bg-[#D4CCBE] shadow-sm transition-all active:scale-95">
+          See Recipe
+        </button>
+        <button onClick={() => setShowVideo(true)} className="flex-1 py-4 md:py-6 rounded-2xl font-bold text-sm md:text-xl bg-[#E8E2D8] border border-[#D4CCBE] text-gray-700 hover:bg-[#D4CCBE] shadow-sm transition-all active:scale-95">
+          Watch Tutorial
+        </button>
+      </div>
+    </section>
+  </div>
+
+  {/* ── START COURSE BUTTON ── */}
+  {!isIngredient && (
+    <div className="pt-10">
+      <button className="w-full py-6 md:py-8 rounded-[2rem] font-black uppercase tracking-[0.3em] text-xs md:text-sm text-white bg-[#2A1B17] shadow-2xl hover:bg-[#3D2B26] transition-all active:scale-[0.98]">
+        Start This Course
+      </button>
+    </div>
+  )}
+</main>
 
       {/* ── MODAL RECIPE ── */}
       {showRecipe && (
